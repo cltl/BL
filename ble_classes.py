@@ -4,6 +4,8 @@ from collections import defaultdict
 import itertools
 import statistics
 import pandas
+import pickle
+import os
 
 
 def update_one_dict_with_another(original_d, new_d, verbose=0):
@@ -119,9 +121,11 @@ class BLECollection:
     """
     def __init__(self,
                  g,
+                 resource,
                  root_node,
                  weight_property,
                  subsumer_threshold,
+                 output_folder,
                  root_zero=True,
                  verbose=0):
         self.root_node = root_node
@@ -135,7 +139,7 @@ class BLECollection:
 
         self.leaf_nodes = self.get_leaf_nodes()
 
-        self.leaf_nodes = set(list(self.leaf_nodes)[:1000])
+        self.leaf_nodes = self.leaf_nodes
         self.node_id2node_obj = self.load_node_objs(self.leaf_nodes)
 
         self.node_id2bl_obj = self.compute_bls(source_node_objs=self.node_id2node_obj.values(),
@@ -146,6 +150,8 @@ class BLECollection:
         # TODO: create bl2bl_obj and use that in stats
 
         self.stats = self.get_stats()
+
+        self.write_to_file(output_folder, resource)
 
     def __str__(self):
         info = ['\nSETTINGS:']
@@ -161,6 +167,25 @@ class BLECollection:
         info.append('\n')
 
         return '\n'.join(info)
+
+    def write_to_file(self, output_folder, resource):
+
+        if not os.path.isdir(output_folder):
+            os.mkdir(output_folder)
+
+
+        basename = f'resource={resource}+rootnode={self.root_node}+rootzero={self.root_zero}+weightproperty={self.weight_property}+threshold={self.subsumer_threshold}.p'
+        path = os.path.join(output_folder, basename)
+
+        with open(path, 'wb') as outfile:
+            pickle.dump(self, outfile)
+
+        if self.verbose:
+            print(f'written output to: {path}')
+
+
+
+
 
     def get_stats(self):
         ble_objs = {bl_obj
@@ -234,7 +259,7 @@ class BLECollection:
         top_descendants = nx.descendants(g, self.root_node)
         top_descendants.add(self.root_node)
 
-        sub_g = nx.subgraph(g, top_descendants)
+        sub_g = g.subgraph(top_descendants).copy()
 
         if self.root_zero:
             before = sub_g.nodes[self.root_node][self.weight_property]
@@ -554,9 +579,11 @@ if __name__ == '__main__':
     g.add_edges_from(edges)
 
     ble_coll_obj = BLECollection(g,
+                                 resource='testing',
                                  root_node=selected_root_node,
                                  weight_property='occurrence_frequency',
                                  subsumer_threshold=subsumer_threshold,
+                                 output_folder='output',
                                  root_zero=root_zero,
                                  verbose=verbose)
 
