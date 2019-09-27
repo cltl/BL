@@ -6,6 +6,31 @@ import statistics
 import pandas
 
 
+def update_one_dict_with_another(original_d, new_d, verbose=0):
+    """
+
+    :param original_d:
+    :param new_d:
+    :return:
+    """
+    changed_keys = set()
+    for key, value in new_d.items():
+        if key in original_d:
+            old_value = original_d[key]
+            new_value = new_d[key]
+
+            if new_value != old_value:
+                original_d[key] = new_value
+                if verbose >= 3:
+                    print(f'changed {old_value} to {new_value} for key {key}')
+                changed_keys.add(key)
+
+    if verbose >= 2:
+        print(f'keys changed: {changed_keys}')
+
+
+#update_one_dict_with_another({'a': 1, 'b': 2}, {'a': 2, 'b': 2}, verbose=3)
+
 def get_parents2children(nodes, g):
     parent2children = defaultdict(set)
     for node_one, node_two in itertools.combinations(nodes, 2):
@@ -109,14 +134,16 @@ class BLECollection:
         self.validate()
 
         self.leaf_nodes = self.get_leaf_nodes()
-        self.leaf_id2node_obj = self.load_node_objs(self.leaf_nodes)
 
-        self.node_id2bl_obj = {}
-        self.bl2node_objs = defaultdict(list)
-        self.update_bls(source_node_objs=self.leaf_id2node_obj.values(),
-                        candidate_bles=set(g.nodes()))
+        self.leaf_nodes = set(list(self.leaf_nodes)[:1000])
+        self.node_id2node_obj = self.load_node_objs(self.leaf_nodes)
+
+        self.node_id2bl_obj = self.compute_bls(source_node_objs=self.node_id2node_obj.values(),
+                                               candidate_bles=set(self.g.nodes()))
 
         self.remove_overlapping_bls()
+
+        # TODO: create bl2bl_obj and use that in stats
 
         self.stats = self.get_stats()
 
@@ -136,7 +163,9 @@ class BLECollection:
         return '\n'.join(info)
 
     def get_stats(self):
-        ble_objs = self.node_id2bl_obj.values()
+        ble_objs = {bl_obj
+                    for bl_obj in self.node_id2bl_obj.values()
+                    if bl_obj is not None}
         info = {
             '# of unique bles': len(ble_objs),
         }
@@ -163,10 +192,20 @@ class BLECollection:
 
         list_of_lists = []
         headers = ['Node label'] + attrs
-        for ble_obj in self.node_id2bl_obj.values():
-            values = [getattr(ble_obj, attr)
+        covered = set()
+        for bl_obj in self.node_id2bl_obj.values():
+
+            if bl_obj is None:
+                continue
+
+            if bl_obj.id_ in covered:
+                continue
+
+            covered.add(bl_obj.id_)
+
+            values = [getattr(bl_obj, attr)
                       for attr in attrs]
-            values.insert(0, f'{ble_obj.label} ({ble_obj.id_})')
+            values.insert(0, f'{bl_obj.label} ({bl_obj.id_})')
             if values[-1] >= min_cumulative_freq:
                 list_of_lists.append(values)
 
@@ -180,8 +219,8 @@ class BLECollection:
         assert type(self.g) == nx.classes.digraph.DiGraph, f'provided graph must be of type nx.classes.digraph.DiGraph, got {type(self.g)}'
 
         needed_attributes = ['label', 'occurrence_frequency', 'features']
-        for node in g.nodes():
-            node_obj = g.nodes[node]
+        for node in self.g.nodes():
+            node_obj = self.g.nodes[node]
             for needed_attribute in needed_attributes:
                 assert needed_attribute in node_obj, f'attribute {needed_attribute} missing from node {node}'
 
@@ -202,11 +241,11 @@ class BLECollection:
             sub_g.nodes[self.root_node][self.weight_property] = 0
             after = sub_g.nodes[self.root_node][self.weight_property]
 
-            if verbose:
+            if self.verbose:
                 print()
                 print(f'changed {self.weight_property} of ROOT NODE from {before} to {after}')
 
-        if verbose:
+        if self.verbose:
             print()
             print(f'found {len(top_descendants) - 1} descendants of top node {self.root_node}')
 
@@ -232,7 +271,7 @@ class BLECollection:
         node2node_obj = {}
 
         for node_id in node_ids:
-            node_info = g.nodes[node_id]
+            node_info = self.g.nodes[node_id]
             node_obj = Node(id_=node_id,
                             label=node_info['label'],
                             occurrence_frequency=node_info['occurrence_frequency'],
@@ -243,7 +282,7 @@ class BLECollection:
 
         return node2node_obj
 
-    def update_bls(self, source_node_objs, candidate_bles):
+    def compute_bls(self, source_node_objs, candidate_bles):
         """
 
         :param list source_node_ids: list of Node objects for which you want to compute BLs
@@ -252,7 +291,7 @@ class BLECollection:
         if you add a subset of all nodes, only those can be BLs
         :return:
         """
-        # TODO: this should be updated such that only updates can be done for specific part of the hierarchy
+        node_id2bl_obj = {}
 
         for node_obj in source_node_objs:
 
@@ -261,6 +300,7 @@ class BLECollection:
 
 
             bl = None
+
             for local_maximum in node_obj.chosen_local_maxima:
                 the_descendants = nx.descendants(self.g, local_maximum)
 
@@ -268,88 +308,82 @@ class BLECollection:
                     bl = local_maximum
                     break
 
-            to_remove = False
-
-            # update: node has ble before -> now it is None -> candidate for removal
-            if bl is None:
-                to_remove = True
-
             # update: node has ble
             if bl not in candidate_bles:
                 if self.verbose >= 3:
                     print(f'bl {bl} for {node_obj.id_} not accepted since not in candidate bls')
-                to_remove = True
-
-            if to_remove:
-                if node_obj.id_ in self.node_id2bl_obj:
-                    if verbose >= 4:
-                        print(f'removed {node_obj.id_} from self.node_id2bl_obj')
-
-                    del self.node_id2bl_obj[node_obj.id_]
-                continue
-
-            # add ble for node that was not there before
-            bl_info = g.nodes[bl]
-            depth = len(nx.shortest_path(self.g, self.root_node, bl))
-
-            descendant_cumulative_weight = sum([g.nodes[descendant][self.weight_property]
-                                                for descendant in the_descendants])
-            cumulative_weight = descendant_cumulative_weight + bl_info[self.weight_property]
-
-            bl_obj = BL(id_=bl,
-                        label=bl_info['label'],
-                        node_depth=depth,
-                        weight_value=bl_info[self.weight_property],
-                        descendants=the_descendants,
-                        cumulative_weight=cumulative_weight)
-
-            self.node_id2bl_obj[node_obj.id_] = bl_obj
+                bl = None
 
 
-        self.bl2node_objs = defaultdict(list)
-        for node_obj, bl_obj in self.node_id2bl_obj.items():
-            self.bl2node_objs[bl_obj.id_].append(node_obj)
+            if bl is None:
+                node_id2bl_obj[node_obj.id_] = None
+            else:
+                # add ble for node that was not there before
+                bl_info = self.g.nodes[bl]
+                depth = len(nx.shortest_path(self.g, self.root_node, bl))
+
+                descendant_cumulative_weight = sum([self.g.nodes[descendant][self.weight_property]
+                                                    for descendant in the_descendants])
+                cumulative_weight = descendant_cumulative_weight + bl_info[self.weight_property]
+
+                bl_obj = BL(id_=bl,
+                            label=bl_info['label'],
+                            node_depth=depth,
+                            weight_value=bl_info[self.weight_property],
+                            descendants=the_descendants,
+                            cumulative_weight=cumulative_weight)
+
+                node_id2bl_obj[node_obj.id_] = bl_obj
+
+
+        return node_id2bl_obj
 
 
 
     def remove_overlapping_bls(self):
 
-        the_bles = set(self.bl2node_objs)
+        the_bles = {bl_obj.id_
+                    for bl_obj in self.node_id2bl_obj.values()
+                    if bl_obj is not None}
         parent2children = get_parents2children(the_bles, self.g)
 
-        if verbose >= 2:
+        if self.verbose >= 2:
             print()
             print(f'STARTED REMOVING OVERLAPPING BLS there are now {len(the_bles)}')
+            print(parent2children)
 
         while parent2children:
 
             # TODO: use more dominant BLs instead of parent one
 
-            # remove parent BLs
             num_removed = 0
+            # remove parent BLs
             for parent_bl, children_bls in parent2children.items():
 
                 # set freq to zero
                 self.g.nodes[parent_bl][self.weight_property] = 0
-                num_removed += 1
                 if self.verbose >= 4:
                     print(f'set {parent_bl} to zero')
 
                 # recompute BLs
                 the_candidate_bles = nx.descendants(self.g, parent_bl)
-                self.update_bls(source_node_objs=self.leaf_id2node_obj.values(),
-                                candidate_bles=the_candidate_bles)
 
+                # determine nodes and candidate bles for which you want to recompute bls
+                node_objs = []
+                parent_descendants = nx.descendants(self.g, parent_bl)
+                for node_id, bl_obj in self.node_id2bl_obj.items():
+                    if node_id in parent_descendants:
+                        node_objs.append(self.node_id2node_obj[node_id])
 
-            inside = len(the_bles) - num_removed
-            if self.verbose >= 2:
-                print(f'REMOVED {num_removed} OVERLAPPING BLS, there are now {inside}.')
+                local_nodeid2bl_obj = self.compute_bls(source_node_objs=node_objs,
+                                                       candidate_bles=the_candidate_bles)
 
-            the_bles = set(self.bl2node_objs)
-            after = len(the_bles)
-            delta = after - inside
-            if self.verbose >= 2:
-                print(f'ADDED {delta}, there are now {after}')
+                # update global node_id2bl_obj
+                update_one_dict_with_another(self.node_id2bl_obj, local_nodeid2bl_obj, verbose=self.verbose)
+
+            the_bles = {bl_obj.id_
+                        for bl_obj in self.node_id2bl_obj.values()
+                        if bl_obj is not None}
 
             parent2children = get_parents2children(the_bles, self.g)
 
@@ -501,7 +535,7 @@ if __name__ == '__main__':
     ]
 
     ## THRESHOLD = 0
-    # node 1 has node 2 as bl
+    # node 0 has node 2 as bl
     # node 7 has node 3 as bl
     # node 6 is no BL since node 3 has a higher occurrence_frequency than node 6
     # since 3 is a parent of 2, we remove it
@@ -510,8 +544,8 @@ if __name__ == '__main__':
 
     selected_root_node = 5
     root_zero = True
-    subsumer_threshold = 0
-    verbose = 2
+    subsumer_threshold = 2
+    verbose = 3
 
 
     g = nx.DiGraph()
@@ -525,7 +559,6 @@ if __name__ == '__main__':
                                  subsumer_threshold=subsumer_threshold,
                                  root_zero=root_zero,
                                  verbose=verbose)
-
 
     print(ble_coll_obj)
     ble_coll_obj.print_bles()
