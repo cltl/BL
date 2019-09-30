@@ -93,9 +93,9 @@ assert result == (['b', 'd'], 2)
 
 
 
-class BLECollection:
+class BLCollection:
     """
-    Basic Level Event collection
+    Basic Level collection
 
     :param g: a networkx directed graph.
     the directed relation depends on the resource used, e.g.,
@@ -139,7 +139,6 @@ class BLECollection:
 
         self.leaf_nodes = self.get_leaf_nodes()
 
-        self.leaf_nodes = self.leaf_nodes
         self.node_id2node_obj = self.load_node_objs(self.leaf_nodes)
 
         self.node_id2bl_obj = self.compute_bls(source_node_objs=self.node_id2node_obj.values(),
@@ -147,7 +146,7 @@ class BLECollection:
 
         self.remove_overlapping_bls()
 
-        # TODO: create bl2bl_obj and use that in stats
+        self.bl2bl_obj = self.get_bl2bl_obj()
 
         self.stats = self.get_stats()
 
@@ -188,11 +187,17 @@ class BLECollection:
 
 
     def get_stats(self):
-        ble_objs = {bl_obj
-                    for bl_obj in self.node_id2bl_obj.values()
-                    if bl_obj is not None}
+        bl_objs = self.bl2bl_obj.values()
+
+        bl_info = [bl_obj is not None
+                   for bl_obj in self.node_id2bl_obj.values()]
+        yes_bls  = sum(bl_info)
+        no_bls = len(bl_info) - yes_bls
+
         info = {
-            '# of unique bles': len(ble_objs),
+            '# of nodes with bl' : yes_bls,
+            '# of nodes without bl': no_bls,
+            '# of unique bls': len(bl_objs),
         }
 
         for attr in ['weight_value',
@@ -201,7 +206,7 @@ class BLECollection:
                      'cumulative_weight'
                      ]:
             values = [getattr(ble_obj, attr)
-                      for ble_obj in ble_objs]
+                      for ble_obj in bl_objs]
             minimum, mean, maximum = min_mean_max(values)
 
             info[attr] = f'mean: {mean} (min: {minimum}, max: {maximum})'
@@ -364,6 +369,15 @@ class BLECollection:
         return node_id2bl_obj
 
 
+
+    def get_bl2bl_obj(self):
+        bl2bl_obj = {}
+
+        for node_id, bl_obj in self.node_id2bl_obj.items():
+            if bl_obj is not None:
+                bl2bl_obj[bl_obj.id_] = bl_obj
+
+        return bl2bl_obj
 
     def remove_overlapping_bls(self):
 
@@ -578,7 +592,7 @@ if __name__ == '__main__':
     nx.set_node_attributes(g, nodes)
     g.add_edges_from(edges)
 
-    ble_coll_obj = BLECollection(g,
+    bl_coll_obj = BLCollection(g,
                                  resource='testing',
                                  root_node=selected_root_node,
                                  weight_property='occurrence_frequency',
@@ -587,7 +601,7 @@ if __name__ == '__main__':
                                  root_zero=root_zero,
                                  verbose=verbose)
 
-    print(ble_coll_obj)
-    ble_coll_obj.print_bles()
+    print(bl_coll_obj)
+    bl_coll_obj.print_bles()
 
 

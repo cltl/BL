@@ -1,4 +1,5 @@
-import ble_classes
+import bl_classes
+import utils
 import networkx as nx
 
 
@@ -6,16 +7,16 @@ import networkx as nx
 path = '../multilingual-wiki-event-pipeline/ontology/g.p'
 g = nx.read_gpickle(path)
 
-ble_coll_obj = ble_classes.BLECollection(g=g,
-                                         resource='Wikidata',
-                                         output_folder='output',
-                                         root_node='wd:Q1656682',
-                                         weight_property='occurrence_frequency',
-                                         subsumer_threshold=0,
-                                         root_zero=True,
-                                         verbose=1)
+bl_coll_obj = bl_classes.BLCollection(g=g,
+                                        resource='Wikidata',
+                                        output_folder='output',
+                                        root_node='wd:Q1656682',
+                                        weight_property='occurrence_frequency',
+                                        subsumer_threshold=0,
+                                        root_zero=True,
+                                        verbose=1)
 
 
-print(ble_coll_obj)
-ble_coll_obj.print_bles(min_cumulative_freq=500)
+utils.get_overview_table(input_folder='output', excel_path='output/overview.xlsx')
+
 
