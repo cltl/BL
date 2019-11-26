@@ -6,6 +6,7 @@ import statistics
 import pandas
 import pickle
 import os
+import utils
 
 
 def update_one_dict_with_another(original_d, new_d, verbose=0):
@@ -209,7 +210,7 @@ class BLCollection:
                       for ble_obj in bl_objs]
             minimum, mean, maximum = min_mean_max(values)
 
-            info[attr] = f'mean: {mean} (min: {minimum}, max: {maximum})'
+            info[attr] = (minimum, mean, maximum)
         return info
 
 
@@ -241,7 +242,43 @@ class BLCollection:
 
         df = pandas.DataFrame(list_of_lists, columns=headers)
 
-        print(df)
+        return df
+
+
+    def get_n_paths_per_bl(self, num_paths=1):
+        """
+
+        :return:
+        """
+        # create bl to node_objs
+        bl2node_objs = defaultdict(list)
+
+        for node_id, bl_obj in self.node_id2bl_obj.items():
+            if bl_obj is not None:
+                node_obj = self.node_id2node_obj[node_id]
+                bl2node_objs[bl_obj.id_].append(node_obj)
+
+        # random sample num_paths
+        assert len(bl2node_objs) == len(self.bl2bl_obj)
+
+        # return dict mapping id -> path (list)
+        id_2tree = {}
+
+        for bl_id, node_objs in bl2node_objs.items():
+            bl_obj = self.bl2bl_obj[bl_id]
+            the_sample = utils.get_sample(node_objs, num_paths)
+
+            for node_obj in the_sample:
+                the_path = []
+                for item in list(reversed(node_obj.chosen_path_to_top)):
+                    chosen = False
+                    if item == bl_obj.id_:
+                        chosen = True
+                    the_path.append((item, chosen))
+
+                id_2tree[node_obj.id_] = the_path
+
+        return id_2tree
 
     def validate(self):
         supported = {'occurrence_frequency', 'num_features'}
