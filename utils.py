@@ -5,6 +5,11 @@ import random
 
 
 
+def chunks(lst, n):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
+
 def get_overview_table(input_folder,
                        suffix="*.p",
                        only_average=True,
