@@ -186,7 +186,9 @@ class EventTypeCollection:
             for event_type_uri, incident_uri in instance_of_rels:
                 event_type_uri_to_incident_uri[event_type_uri].add(incident_uri)
 
-        print(event_type_uri_to_incident_uri.keys())
+        if self.verbose >= 2:
+            print()
+            print(f'found inc_wd_uris for {len(event_type_uri_to_incident_uri)} event types')
 
         num_inc_uris_added = []
         for event_type_uri, incident_uris in event_type_uri_to_incident_uri.items():
@@ -194,11 +196,15 @@ class EventTypeCollection:
             event_type_obj = self.event_type_id_to_event_type_obj.get(event_type_uri, None)
 
             if event_type_obj is None:
+                if self.verbose >= 3:
+                    print()
+                    print(event_type_uri)
+                    input('continue?')
                 continue
 
             incident_uris = event_type_uri_to_incident_uri[event_type_uri]
 
-            event_type_uri.incidents = incident_uris
+            event_type_obj.incidents = incident_uris
 
             num_inc_uris_added.append(len(incident_uris))
 

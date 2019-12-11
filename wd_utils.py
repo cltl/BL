@@ -10,6 +10,21 @@ import requests
 
 import utils
 
+def from_short_uri_to_full_uri(short_uri):
+    """
+    replace:
+    - wdt: by http://www.wikidata.org/prop/direct/
+    - wd: by http://www.wikidata.org/entity/
+    """
+    for prefix, full in [('wd:', 'http://www.wikidata.org/entity/'),
+                         ('wdt:', 'http://www.wikidata.org/prop/direct/')]:
+        short_uri = short_uri.replace(prefix, full)
+
+    return short_uri
+
+assert from_short_uri_to_full_uri('wd:Q6534') == 'http://www.wikidata.org/entity/Q6534'
+assert from_short_uri_to_full_uri('wdt:P17') == 'http://www.wikidata.org/prop/direct/P17'
+
 
 QUERIES = {
     "subclass_of": """SELECT ?subclass1 ?subclass2 WHERE {
@@ -283,6 +298,28 @@ def get_results_with_retry(wdt_sparql_url, query):
     return response
 
 
+
+def validate(output, items, verbose=0):
+    """
+    determine for which items there is no information in the output
+
+    :param list output: list of lists (item, piece_of_information)
+    :param list items: list of items
+    """
+    item_to_information = defaultdict(set)
+
+    items = [from_short_uri_to_full_uri(item)
+             for item in items]
+
+    for item, piece_of_information in output:
+        item_to_information[item].add(piece_of_information)
+
+    missing = set(items) - set(item_to_information)
+
+    if verbose >= 2:
+        print()
+        print(f'MISSING: no information found for {len(missing)} items')
+
 def call_wikidata(sparql_query,
                   query_name,
                   verbose=0):
@@ -327,13 +364,13 @@ def run_queries(output_folder, verbose=0):
 
         if sparql_query:
 
-            if verbose >= 3:
-                sparql_query = sparql_query + ' LIMIT 100'
+            if verbose >= 4:
+                sparql_query = sparql_query + ' LIMIT 10'
 
             if verbose >= 2:
                 print()
-                print(query_name)
-                print(sparql_query)
+                print('QUERY NAME', query_name)
+                print('QUERY', sparql_query)
 
             if query_name in {'subclass_of',
                               'instance_of',
@@ -349,13 +386,17 @@ def run_queries(output_folder, verbose=0):
                 pre_processed = pre_process_function(output_folder, verbose=verbose)
 
                 post_processed = set()
+
                 count = 0
                 for batch in utils.chunks(pre_processed, BATCH_SIZE):
 
                     items_string = ' '.join(batch)
                     the_query = sparql_query % items_string
 
-                    if verbose >= 2:
+                    if verbose >= 4:
+                        the_query = the_query.replace(' LIMIT 10', '')
+
+                    if verbose >= 3:
                         print()
                         print(f'working on batch starting from index {count} ({datetime.now()})')
 
@@ -367,8 +408,11 @@ def run_queries(output_folder, verbose=0):
 
                     count += len(batch)
 
-
                 post_processed = list(post_processed)
+
+                validate(output=post_processed,
+                         items=pre_processed,
+                         verbose=verbose)
 
             output_path = os.path.join(output_folder,
                                        f'{query_name}.json')
@@ -378,11 +422,7 @@ def run_queries(output_folder, verbose=0):
 
 if __name__ == '__main__':
 
-    # TODO: postprocess functions
-    # TODO: add preprocess functions for properties and labels
-    # TODO: run this thing on kyoto at some point or other server
-
     output_folder = 'wd_cache'
-    verbose = 3
+    verbose = 4
 
     run_queries(output_folder, verbose=verbose)
