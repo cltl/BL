@@ -5,6 +5,8 @@ import json
 from collections import defaultdict
 import statistics
 from datetime import datetime
+import inspect
+import sys
 
 import requests
 
@@ -49,21 +51,25 @@ QUERIES = {
           ?incident rdfs:label ?label .
           filter langMatches( lang(?label), "EN" )
     }""",
+    "prop_to_labels": """SELECT ?prop ?label WHERE {
+        ?prop wikibase:directClaim ?a .
+        ?prop rdfs:label ?label.  
+        filter(lang(?label) = "en").
+        }""",
     "event_type_to_labels": """SELECT ?event_type ?label WHERE {
       SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
       VALUES ?event_type { %s }
       ?event_type rdfs:label ?label .
       filter langMatches( lang(?label), "EN" )
     }""",
-    "prop_to_labels": """SELECT ?prop ?label WHERE {
-        ?prop wikibase:directClaim ?a .
-        ?prop rdfs:label ?label.  
-        filter(lang(?label) = "en").
-        }""",
 }
 
 WDT_SPARQL_URL = 'https://query.wikidata.org/sparql'
-BATCH_SIZE = 500
+BATCH_SIZE = 400
+DEV_LIMIT = 1000000
+NUM_RETRIES = 5
+LOG_BATCHES = False
+OVERWRITE = True
 
 def preprocess_inc_to_props(output_folder, verbose=0):
     """
@@ -83,6 +89,8 @@ def preprocess_inc_to_props(output_folder, verbose=0):
 
     if verbose >= 1:
         print()
+        this_function_name = inspect.currentframe().f_code.co_name
+        print('INSIDE FUNCTION', this_function_name)
         print(f'found {len(inc_wd_uris)} wd incident uris')
 
     return list(inc_wd_uris)
@@ -105,6 +113,8 @@ def preprocess_inc_to_labels(output_folder, verbose=0):
 
     if verbose >= 1:
         print()
+        this_function_name = inspect.currentframe().f_code.co_name
+        print('INSIDE FUNCTION', this_function_name)
         print(f'found {len(inc_wd_uris)} wd incident uris')
 
     return list(inc_wd_uris)
@@ -129,6 +139,8 @@ def preprocess_event_type_to_labels(output_folder, verbose=0):
 
     if verbose >= 1:
         print()
+        this_function_name = inspect.currentframe().f_code.co_name
+        print('INSIDE FUNCTION', this_function_name)
         print(f'found {len(event_type_uris)} wd event type uris')
 
     return list(event_type_uris)
@@ -151,6 +163,8 @@ def post_process_subclass_of(response, verbose=0):
         set_of_relations.add((x, y))
 
     if verbose >= 2:
+        this_function_name = inspect.currentframe().f_code.co_name
+        print('INSIDE FUNCTION', this_function_name)
         print(f'found {len(set_of_relations)} unique relations')
 
     return list(set_of_relations)
@@ -180,6 +194,8 @@ def post_process_instance_of(response, verbose=0):
 
     if verbose >= 2:
         print()
+        this_function_name = inspect.currentframe().f_code.co_name
+        print('INSIDE FUNCTION', this_function_name)
         print(f'unique number of event types: {len(type_id_to_num_incidents)}')
         print(f'number of incidents matched to event type: {sum(values)}')
         minimum, mean, maximum = min(values), statistics.mean(values), max(values)
@@ -204,6 +220,8 @@ def post_process_inc_to_props(response, verbose=0):
         set_of_relations.add((incident, property))
 
     if verbose >= 2:
+        this_function_name = inspect.currentframe().f_code.co_name
+        print('INSIDE FUNCTION', this_function_name)
         print(f'found {len(set_of_relations)} properties of wd incident uris')
 
     return set_of_relations
@@ -225,6 +243,8 @@ def post_process_inc_to_labels(response, verbose=0):
         set_of_relations.add((incident, label))
 
     if verbose >= 2:
+        this_function_name = inspect.currentframe().f_code.co_name
+        print('INSIDE FUNCTION', this_function_name)
         print(f'found {len(set_of_relations)} English labels for wd incident uris')
 
     return set_of_relations
@@ -246,6 +266,8 @@ def post_process_event_type_to_labels(response, verbose=0):
         set_of_relations.add((event_type, label))
 
     if verbose >= 2:
+        this_function_name = inspect.currentframe().f_code.co_name
+        print('INSIDE FUNCTION', this_function_name)
         print(f'found {len(set_of_relations)} English labels for event type wd uris')
 
     return set_of_relations
@@ -269,6 +291,8 @@ def post_process_prop_to_labels(response, verbose=0):
         set_of_relations.add((event_type, label))
 
     if verbose >= 2:
+        this_function_name = inspect.currentframe().f_code.co_name
+        print('INSIDE FUNCTION', this_function_name)
         print(f'found {len(set_of_relations)} English labels for properties')
 
     return list(set_of_relations)
@@ -284,6 +308,7 @@ def get_results_with_retry(wdt_sparql_url, query):
     :rtype: dict
     :return: response from api
     """
+    num_attempts = 0
     while True:
         try:
             r = requests.get(wdt_sparql_url,
@@ -291,8 +316,15 @@ def get_results_with_retry(wdt_sparql_url, query):
             response = r.json()
             break
         except Exception as e:
-            print(e, 'error, retrying')
+            sys.stderr.write(f'{e},error, retrying\n')
+            num_attempts += 1
             time.sleep(2)
+        
+            if num_attempts == NUM_RETRIES:
+                print(f'unable to run query: {query}')
+                response = {'results' : {'bindings' : []}}
+                break
+
             continue
 
     return response
@@ -318,6 +350,8 @@ def validate(output, items, verbose=0):
 
     if verbose >= 2:
         print()
+        this_function_name = inspect.currentframe().f_code.co_name
+        print('INSIDE FUNCTION', this_function_name)
         print(f'MISSING: no information found for {len(missing)} items')
 
 def call_wikidata(sparql_query,
@@ -353,10 +387,14 @@ def run_queries(output_folder, verbose=0):
     """
     # (remove and) recreate folder
     if os.path.exists(output_folder):
-        rmtree(output_folder)
-        if verbose >= 1:
-            print(f'removed folder {output_folder}')
-    os.mkdir(output_folder)
+        if OVERWRITE:
+            rmtree(output_folder)
+            if verbose >= 1:
+                print(f'removed folder {output_folder}')
+            os.mkdir(output_folder)
+    else:
+        os.mkdir(output_folder)
+
     if verbose >= 1:
         print(f'recreated folder {output_folder}')
 
@@ -365,7 +403,7 @@ def run_queries(output_folder, verbose=0):
         if sparql_query:
 
             if verbose >= 4:
-                sparql_query = sparql_query + ' LIMIT 10'
+                sparql_query = sparql_query + f' LIMIT {DEV_LIMIT}'
 
             if verbose >= 2:
                 print()
@@ -394,15 +432,17 @@ def run_queries(output_folder, verbose=0):
                     the_query = sparql_query % items_string
 
                     if verbose >= 4:
-                        the_query = the_query.replace(' LIMIT 10', '')
+                        the_query = the_query.replace(f' LIMIT {DEV_LIMIT}', '')
 
-                    if verbose >= 3:
-                        print()
-                        print(f'working on batch starting from index {count} ({datetime.now()})')
+                    sys.stderr.write(f'working on batch starting from index {count} ({datetime.now()})\n')
+
+                    verbose_here = verbose
+                    if not LOG_BATCHES:
+                        verbose_here = 0
 
                     part_post_processed = call_wikidata(sparql_query=the_query,
                                                         query_name=query_name,
-                                                        verbose=verbose)
+                                                        verbose=verbose_here)
 
                     post_processed.update(part_post_processed)
 
@@ -423,6 +463,6 @@ def run_queries(output_folder, verbose=0):
 if __name__ == '__main__':
 
     output_folder = 'wd_cache'
-    verbose = 4
+    verbose = 2
 
     run_queries(output_folder, verbose=verbose)
