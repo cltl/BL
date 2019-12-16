@@ -64,17 +64,21 @@ class EventTypeCollection:
                                                      root_node,
                                                      min_leaf_incident_freq)
 
+        # restrict to only event subgraph
+        self.event_type_id_to_event_type_obj = {event_uri : event_type_obj
+                                                for event_uri, event_type_obj in self.event_type_id_to_event_type_obj.items()
+                                                if event_type_obj.prefix_uri in self.g}
+
         self.prop_to_freq, \
         self.evtype_and_prop_to_freq = self.compute_prop_freq()
         self.update_cue_validities()
 
         for event_type_obj in self.event_type_id_to_event_type_obj.values():
-            if event_type_obj.prefix_uri in self.g:
-                event_type_obj.set_children(self.g)
-                event_type_obj.set_parents(self.g)
-                event_type_obj.set_subsumers(self.g)
+            event_type_obj.set_children(self.g)
+            event_type_obj.set_parents(self.g)
+            event_type_obj.set_subsumers(self.g)
 
-        self.stats = self.compute_stats()
+        self.stats = self.compute_stats(root_node, min_leaf_incident_freq, needed_properties)
 
 
     def __str__(self):
@@ -355,16 +359,22 @@ class EventTypeCollection:
 
         return sub_g, leaf_nodes
 
-    def compute_stats(self):
+    def compute_stats(self, root_node, min_leaf_incident_freq, needed_properties):
         stats = {}
 
         num_event_types = len(self.event_type_id_to_event_type_obj)
+        stats['root_node'] = root_node
+        stats['minimum # of incidents for event type leaf node'] = min_leaf_incident_freq
+        stats['required properties for incident'] = needed_properties
         stats['num_event_types'] = num_event_types
+        stats['num_leaf_nodes'] = len(self.leaf_nodes)
 
         inc_uris = {inc_obj.full_uri
                     for event_type_obj in self.event_type_id_to_event_type_obj.values()
                     for inc_obj in event_type_obj.incidents}
         stats['num_inc_uris'] = len(inc_uris)
+
+        stats['num_unique_properties'] = len(self.prop_to_freq)
 
         return stats
 

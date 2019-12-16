@@ -51,6 +51,8 @@ event_type_coll_obj = wd_classes.EventTypeCollection(path_subclass_of_rels=f'{wd
 
 validate(event_type_coll_obj)
 
+print(event_type_coll_obj)
+
 event_type_coll_obj.pickle_it(pickle_path)
 
 
