@@ -5,10 +5,9 @@ from collections import defaultdict
 import networkx as nx
 
 from graph_utils import get_leaf_nodes
-from stats_utils import show_top_n
+from wd_utils import from_short_uri_to_full_uri
 
-# TODO: represent as directed graph
-#   - which attributes should be in there?
+
 # TODO: total cue validity
 # TODO: stats
 #   - which ones to show?
@@ -69,6 +68,12 @@ class EventTypeCollection:
         self.evtype_and_prop_to_freq = self.compute_prop_freq()
         self.update_cue_validities()
 
+        for event_type_obj in self.event_type_id_to_event_type_obj.values():
+            if event_type_obj.prefix_uri in self.g:
+                event_type_obj.set_children(self.g)
+                event_type_obj.set_parents(self.g)
+                event_type_obj.set_subsumers(self.g)
+
         self.stats = self.compute_stats()
 
 
@@ -85,7 +90,7 @@ class EventTypeCollection:
         load mapping from property id (full uri) -> instance of class Property
         """
         with open(path_prop_to_labels) as infile:
-            prop_to_label_rels = json.load(open(path_prop_to_labels))
+            prop_to_label_rels = json.load(infile)
 
         prop_to_labels = defaultdict(set)
         for prop_uri, label in prop_to_label_rels:
@@ -266,7 +271,7 @@ class EventTypeCollection:
                               path_subclass_of_rels,
                               root_node_id,
                               min_leaf_incident_freq):
-        ""
+        """"""
         with open(path_subclass_of_rels) as infile:
             set_of_relations = json.load(infile)
 
@@ -374,7 +379,7 @@ class EventTypeCollection:
 
 
 
-class EventType(EventTypeCollection):
+class EventType():
     """
     represents a Wikidata event type, e.g.,
 
@@ -396,6 +401,9 @@ class EventType(EventTypeCollection):
         self.incidents = []
 
         self.cue_validities = None # is updated by method set_cue_validities
+        self.children = None       # is updated by set_children
+        self.parents = None        # is updated by set_parents
+        self.subsumers = None      # is updated by set_subsumers
 
     def __str__(self):
         info = ['Information about EventType:']
@@ -407,7 +415,14 @@ class EventType(EventTypeCollection):
         for attr in attrs:
             info.append(f'ATTR {attr} has value: {getattr(self, attr)}')
 
-        info.append(f'ATTR instances has {len(self.incidents)} items')
+        count_attrs = ['incidents',
+                       'children',
+                       'parents',
+                       'subsumers']
+
+        for count_attr in count_attrs:
+            value = getattr(self, count_attr)
+            info.append(f'ATTR {count_attr} has {len(value)} items')
 
         return '\n'.join(info)
 
@@ -431,13 +446,29 @@ class EventType(EventTypeCollection):
     def properties_aggregated(self, value):
         self._properties_aggregated = value
 
-
     def set_cue_validities(self, wd_prop_to_freq):
         self.cue_validities = dict()
         for unique_property, freq_in_event_type in self.properties_aggregated.items():
             wd_prop_freq = wd_prop_to_freq[unique_property]
             cue_validity = freq_in_event_type / wd_prop_freq
             self.cue_validities[unique_property] = cue_validity
+
+
+    def set_children(self, g):
+        children = g.successors(self.prefix_uri)
+        self.children = {from_short_uri_to_full_uri(child)
+                         for child in children}
+
+    def set_parents(self, g):
+        parents = g.predecessors(self.prefix_uri)
+        self.parents = {from_short_uri_to_full_uri(parent)
+                        for parent in parents}
+
+
+    def set_subsumers(self, g):
+        subsumers = nx.descendants(g, self.prefix_uri)
+        self.subsumers = {from_short_uri_to_full_uri(subsumer)
+                          for subsumer in subsumers}
 
 
 class Incident:

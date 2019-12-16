@@ -4,7 +4,6 @@ import wd_classes
 
 def validate(event_type_coll_obj):
 
-
     # properties
     prop_to_label = {
         'http://www.wikidata.org/prop/direct/P17' : 'country',
