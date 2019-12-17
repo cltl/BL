@@ -1,5 +1,3 @@
-import pickle
-
 import wd_classes
 
 def validate(event_type_coll_obj):

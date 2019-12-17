@@ -65,11 +65,11 @@ QUERIES = {
 }
 
 WDT_SPARQL_URL = 'https://query.wikidata.org/sparql'
-BATCH_SIZE = 400
-DEV_LIMIT = 1000000
-NUM_RETRIES = 5
-LOG_BATCHES = False
-OVERWRITE = True
+BATCH_SIZE = 400 # at 500 the api calls do not work anymore
+DEV_LIMIT = 1000000 # how many items do you want to have when you put verbose to 4 or higher
+NUM_RETRIES = 5 # after how many retries do you give up
+LOG_BATCHES = False # if True, send information about each batch to stdout
+OVERWRITE = True # if True, overwrite existing results
 
 def preprocess_inc_to_props(output_folder, verbose=0):
     """
