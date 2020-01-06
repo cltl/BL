@@ -45,11 +45,12 @@ QUERIES = {
           ?incident ?property ?value.
           FILTER(STRSTARTS(str(?property), str(wdt:)))
         }""",
-    "inc_to_labels": """SELECT ?incident ?label WHERE {
+    "inc_to_labels": """SELECT ?incident ?label ?lang WHERE {
           SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
           VALUES ?incident { %s }
           ?incident rdfs:label ?label .
-          filter langMatches( lang(?label), "EN" )
+          filter(lang(?label) = 'it' || lang(?label) = 'en' || lang(?label) = 'nl')
+          BIND(lang(?label) as ?lang)
     }""",
     "id_props" : """SELECT ?prop WHERE {
         ?prop wikibase:directClaim ?a .
@@ -72,7 +73,7 @@ QUERIES = {
 
 WDT_SPARQL_URL = 'https://query.wikidata.org/sparql'
 BATCH_SIZE = 400 # at 500 the api calls do not work anymore
-DEV_LIMIT = 1000000 # how many items do you want to have when you put verbose to 4 or higher
+DEV_LIMIT = 1000 # how many items do you want to have when you put verbose to 4 or higher
 NUM_RETRIES = 5 # after how many retries do you give up
 LOG_BATCHES = False # if True, send information about each batch to stdout
 OVERWRITE = True # if True, overwrite existing results
@@ -247,16 +248,27 @@ def post_process_inc_to_labels(response, verbose=0):
     :return: {(incident_wd_uri,
                english_label)}
     """
-    set_of_relations = set()
+    inc_to_labels = defaultdict(dict)
+
     for info in response['results']['bindings']:
         incident = info['incident']['value']
         label = info['label']['value']
-        set_of_relations.add((incident, label))
+        lang = info['lang']['value']
+
+        inc_to_labels[incident][lang] = label
+
 
     if verbose >= 2:
         this_function_name = inspect.currentframe().f_code.co_name
         print('INSIDE FUNCTION', this_function_name)
-        print(f'found {len(set_of_relations)} English labels for wd incident uris')
+        print(f'found {len(inc_to_labels)} incidents with at least label in Italian, English, and Dutch')
+
+
+    set_of_relations = set()
+
+    for inc, labels in inc_to_labels.items():
+        for lang, label in labels.items():
+            set_of_relations.add((inc, (lang, label)))
 
     return set_of_relations
 
@@ -458,9 +470,6 @@ def run_queries(output_folder, verbose=0):
 
     for query_name, sparql_query in QUERIES.items():
 
-        if query_name not in {'id_props', 'prop_to_labels'}:
-            continue
-
         if sparql_query:
 
             if verbose >= 4:
@@ -531,6 +540,6 @@ def run_queries(output_folder, verbose=0):
 if __name__ == '__main__':
 
     output_folder = 'wd_cache'
-    verbose = 2
+    verbose = 4
 
     run_queries(output_folder, verbose=verbose)

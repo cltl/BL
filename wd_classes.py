@@ -7,13 +7,11 @@ import networkx as nx
 from graph_utils import get_leaf_nodes
 from wd_utils import from_short_uri_to_full_uri
 
-
 # TODO: total cue validity
 # TODO: stats
 #   - which ones to show?
 # TODO: how to filter properties, e.g., (minimum (relative) frequency, which ones to ignore (identifiers)
 #   - no instance_of or subclass_of
-# TODO: create one bash script to run entire thing + commit and push
 # TODO: think about new ways of creating the experiment
 #   - dive back into the literature
 
@@ -77,6 +75,7 @@ class EventTypeCollection:
             event_type_obj.set_children(self.g)
             event_type_obj.set_parents(self.g)
             event_type_obj.set_subsumers(self.g)
+            event_type_obj.set_parent_to_siblings(self.g)
 
         self.stats = self.compute_stats(root_node, min_leaf_incident_freq, needed_properties)
 
@@ -110,7 +109,7 @@ class EventTypeCollection:
             title_id = prop_uri.split('/')[-1]
 
 
-            prop_obj = Property(title_label=label,
+            prop_obj = Property(title_labels={'en' : label},
                                 title_id=title_id,
                                 full_uri=prop_uri,
                                 prefix_uri=f'wdt:{title_id}')
@@ -131,9 +130,9 @@ class EventTypeCollection:
         with open(path_inc_to_labels) as infile:
             inc_to_label_rels = json.load(infile)
 
-            inc_to_labels = defaultdict(set)
-            for inc_uri, label in inc_to_label_rels:
-                inc_to_labels[inc_uri].add(label)
+            inc_to_lang_to_label = defaultdict(dict)
+            for inc_uri, (lang, label) in inc_to_label_rels:
+                inc_to_lang_to_label[inc_uri][lang] = label
 
         with open(path_inc_to_props) as infile:
             inc_to_prop_rels = json.load(infile)
@@ -145,7 +144,7 @@ class EventTypeCollection:
 
         inc_uri_to_inc_obj = dict()
 
-        for inc_uri, labels in inc_to_labels.items():
+        for inc_uri, labels in inc_to_lang_to_label.items():
 
             props = inc_to_props[inc_uri]
             title_id = inc_uri.split('/')[-1]
@@ -159,14 +158,12 @@ class EventTypeCollection:
             if skip:
                 continue
 
-            label = list(labels)[0]
-
             prop_objs = []
             for prop in props:
                 if prop in self.prop_id_to_prop_obj:
                     prop_objs.append(self.prop_id_to_prop_obj[prop])
 
-            inc_obj = Incident(title_label=label,
+            inc_obj = Incident(title_labels=labels,
                                title_id=title_id,
                                full_uri=inc_uri,
                                prefix_uri=f'wd:{title_id}',
@@ -202,7 +199,7 @@ class EventTypeCollection:
             label = list(labels)[0]
             title_id = event_type_uri.split('/')[-1]
 
-            event_type_obj = EventType(title_label=label,
+            event_type_obj = EventType(title_labels={'en' : label},
                                        title_id=title_id,
                                        full_uri=event_type_uri,
                                        prefix_uri=f'wd:{title_id}')
@@ -393,32 +390,33 @@ class EventType():
     """
     represents a Wikidata event type, e.g.,
 
-    title_label='election',
+    title_label={'en' : 'election'}
     title_id='Q40231',
     full_uri='http://www.wikidata.org/entity/Q40231',
     prefix_uri='wd:Q40231',
     """
     def __init__(self,
-                 title_label,
+                 title_labels,
                  title_id,
                  full_uri,
                  prefix_uri,
                  ):
-        self.title_label = title_label
+        self.title_labels = title_labels
         self.title_id = title_id
         self.full_uri = full_uri
         self.prefix_uri = prefix_uri
         self.incidents = []
 
-        self.cue_validities = None # is updated by method set_cue_validities
-        self.children = None       # is updated by set_children
-        self.parents = None        # is updated by set_parents
-        self.subsumers = None      # is updated by set_subsumers
+        self.cue_validities = None      # is updated by method set_cue_validities
+        self.children = None            # is updated by set_children
+        self.parents = None             # is updated by set_parents
+        self.subsumers = None           # is updated by set_subsumers
+        self.parent_to_siblings = None  # is updated by set_parent_to_siblings
 
     def __str__(self):
         info = ['Information about EventType:']
 
-        attrs = ['title_label',
+        attrs = ['title_labels',
                  'title_id',
                  'full_uri',
                  'prefix_uri']
@@ -433,6 +431,10 @@ class EventType():
         for count_attr in count_attrs:
             value = getattr(self, count_attr)
             info.append(f'ATTR {count_attr} has {len(value)} items')
+
+
+        for parent, siblings in self.parent_to_siblings.items():
+            info.append(f'{len(siblings)} siblings from parent {parent}')
 
         return '\n'.join(info)
 
@@ -480,26 +482,38 @@ class EventType():
         self.subsumers = {from_short_uri_to_full_uri(subsumer)
                           for subsumer in subsumers}
 
+    def set_parent_to_siblings(self, g):
+        self.parent_to_siblings = {}
+
+        parents = g.predecessors(self.prefix_uri)
+        for parent in parents:
+            all_children = g.successors(parent)
+            children_minus_this_event = set(all_children) - {self.prefix_uri}
+            children_minus_this_event_full = {
+                from_short_uri_to_full_uri(child)
+                for child in children_minus_this_event
+            }
+            self.parent_to_siblings[from_short_uri_to_full_uri(parent)] = children_minus_this_event_full
 
 class Incident:
     """
     represents a Wikidata Incident, e.g.,
 
-    title_label='2014 Acre gubernatorial election',
-    title_id='Q51336711',
-    full_uri='http://www.wikidata.org/entity/Q51336711',
-    prefix_uri='wd:Q51336711',
+    title_labels={'en' : '2014 Acre gubernatorial election'}
+    title_id='Q51336711'
+    full_uri='http://www.wikidata.org/entity/Q51336711'
+    prefix_uri='wd:Q51336711'
     properties=[prop_obj], # instances of class Property
 
     """
     def __init__(self,
-                 title_label,
+                 title_labels,
                  title_id,
                  full_uri,
                  prefix_uri,
                  properties,
                  ):
-        self.title_label = title_label
+        self.title_labels = title_labels
         self.title_id = title_id
         self.full_uri = full_uri
         self.prefix_uri = prefix_uri
@@ -510,16 +524,13 @@ class Incident:
     def __str__(self):
         info = ['Information about Incident:']
 
-        attrs = ['title_label',
+        attrs = ['title_labels',
                  'title_id',
                  'full_uri',
                  'prefix_uri']
 
         for attr in attrs:
             info.append(f'ATTR {attr} has value: {getattr(self, attr)}')
-
-        props = ' '.join([prop_obj.title_label for prop_obj in self.properties])
-        info.append(f'ATTR properties has value: {props}')
 
         return '\n'.join(info)
 
@@ -528,18 +539,18 @@ class Property:
     """
     represents a Wikidata property, e.g.,
 
-    title_label='country',
-    title_id='P17',
-    full_uri='http://www.wikidata.org/entity/P17',
+    title_labels={'en' : 'country'}
+    title_id='P17'
+    full_uri='http://www.wikidata.org/entity/P17'
     prefix_uri='wdt:P17'
     """
     def __init__(self,
-                 title_label,
+                 title_labels,
                  title_id,
                  full_uri,
                  prefix_uri
                  ):
-        self.title_label = title_label
+        self.title_labels = title_labels
         self.title_id = title_id
         self.full_uri = full_uri
         self.prefix_uri = prefix_uri
@@ -547,7 +558,7 @@ class Property:
     def __str__(self):
         info = ['Information about Property:']
 
-        attrs = ['title_label',
+        attrs = ['title_labels',
                  'title_id',
                  'full_uri',
                  'prefix_uri']
@@ -558,14 +569,14 @@ class Property:
 
 
 if __name__ == '__main__':
-    prop_obj = Property(title_label='country',
+    prop_obj = Property(title_labels={'en' : 'country'},
                         title_id='P17',
                         full_uri='http://www.wikidata.org/entity/P17',
                         prefix_uri='wdt:P17')
     print()
     print(prop_obj)
 
-    inc_obj = Incident(title_label='2014 Acre gubernatorial election',
+    inc_obj = Incident(title_labels={'en' : '2014 Acre gubernatorial election'},
                        title_id='Q51336711',
                        full_uri='http://www.wikidata.org/entity/Q51336711',
                        prefix_uri='wd:Q51336711',
@@ -574,10 +585,9 @@ if __name__ == '__main__':
     print()
     print(inc_obj)
 
-    event_type_obj = EventType(title_label='election',
+    event_type_obj = EventType(title_labels={'en' : 'election'},
                                title_id='Q40231',
                                full_uri='http://www.wikidata.org/entity/Q40231',
-                               prefix_uri='wd:Q40231',
-                               incidents=[inc_obj])
+                               prefix_uri='wd:Q40231')
 
     print(event_type_obj)
