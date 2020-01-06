@@ -53,7 +53,7 @@ class EventTypeCollection:
                  verbose=0):
         self.verbose = verbose
 
-        self.prop_id_to_prop_obj = self.get_property_to_property_obj(path_prop_to_labels=path_prop_to_labels, properties_to_ignore)
+        self.prop_id_to_prop_obj = self.get_property_to_property_obj(path_prop_to_labels=path_prop_to_labels, properties_to_ignore=properties_to_ignore)
         self.inc_id_to_inc_obj = self.get_inc_to_inc_obj(path_inc_to_labels=path_inc_to_labels,
                                                          path_inc_to_props=path_inc_to_props,
                                                          needed_properties=needed_properties)
