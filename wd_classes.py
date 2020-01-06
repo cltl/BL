@@ -33,6 +33,8 @@ class EventTypeCollection:
 
     :param set needed_properties: if provided, an Incident object is only created if minimally
     those properties are present for the incident, e.g., {'http://www.wikidata.org/prop/direct/P17'}
+    :param set properties_to_ignore: if provided, these properties will be ignored,
+    i.e., no Property object will be created, e.g., {'http://www.wikidata.org/prop/direct/P31', 'http://www.wikidata.org/prop/direct/P279'}
     :param int min_leaf_incident_freq: the minimum number of incident that a leaf node in the directed has to have
     to be accepted in the graph. If this is set to 1 or higher, all leaf nodes will be removed until there are
     only leaf nodes with the minimum number of allowed incidents
@@ -46,11 +48,12 @@ class EventTypeCollection:
                  path_prop_to_labels,
                  root_node,
                  needed_properties=set(),
+                 properties_to_ignore=set(),
                  min_leaf_incident_freq=0,
                  verbose=0):
         self.verbose = verbose
 
-        self.prop_id_to_prop_obj = self.get_property_to_property_obj(path_prop_to_labels=path_prop_to_labels)
+        self.prop_id_to_prop_obj = self.get_property_to_property_obj(path_prop_to_labels=path_prop_to_labels, properties_to_ignore)
         self.inc_id_to_inc_obj = self.get_inc_to_inc_obj(path_inc_to_labels=path_inc_to_labels,
                                                          path_inc_to_props=path_inc_to_props,
                                                          needed_properties=needed_properties)
@@ -88,7 +91,7 @@ class EventTypeCollection:
 
         return '\n'.join(info)
 
-    def get_property_to_property_obj(self, path_prop_to_labels):
+    def get_property_to_property_obj(self, path_prop_to_labels, properties_to_ignore):
         """
         load mapping from property id (full uri) -> instance of class Property
         """
@@ -101,6 +104,11 @@ class EventTypeCollection:
 
         prop_id_to_prop_obj = dict()
         for prop_uri, labels in prop_to_labels.items():
+
+            if prop_uri in properties_to_ignore:
+                if self.verbose >= 2:
+                    print(f'ignored Property {prop_uri}')
+                continue
 
             prop_uri = prop_uri.replace('http://www.wikidata.org/entity/',
                                         'http://www.wikidata.org/prop/direct/')

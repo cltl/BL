@@ -37,7 +37,6 @@ QUERIES = {
         ?type_id wdt:P279* wd:Q1656682 .
         ?incident wdt:P31 ?type_id .
         ?incident rdfs:label ?label .
-        FILTER (langMatches( lang(?label), "EN" ) )
         }""",
     "inc_to_props": """SELECT ?incident ?property WHERE {
           SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
@@ -72,8 +71,8 @@ QUERIES = {
 }
 
 WDT_SPARQL_URL = 'https://query.wikidata.org/sparql'
-BATCH_SIZE = 400 # at 500 the api calls do not work anymore
-DEV_LIMIT = 1000 # how many items do you want to have when you put verbose to 4 or higher
+BATCH_SIZE = 250 # at 500 the api calls do not work anymore
+DEV_LIMIT = 10000 # how many items do you want to have when you put verbose to 4 or higher
 NUM_RETRIES = 5 # after how many retries do you give up
 LOG_BATCHES = False # if True, send information about each batch to stdout
 OVERWRITE = True # if True, overwrite existing results
