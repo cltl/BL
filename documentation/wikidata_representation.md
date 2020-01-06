@@ -13,7 +13,8 @@ The queries are located in the Python module **wd_utils.py**, in the variable QU
 | **subclass_of**     | extract all [**subclass of**](https://www.wikidata.org/wiki/Property:P279) relationships | 
 | **instance_of**      | extract all [**instance of**](https://www.wikidata.org/wiki/Property:P31) relations for those Wikidata items that are descendants of the [event node](https://www.wikidata.org/wiki/Q1656682). Please note that this excludes [**murder**](https://www.wikidata.org/wiki/Q132821).      |  
 | **inc_to_props** | for each found incident from the **instance_of** query, we query for all properties, i.e., with the namespace [wdt:](https://www.wikidata.org/wiki/Help:Properties)   |  
-| **inc_to_labels** | for each found incident from the **instance_of** query, we query the English label  |  
+| **inc_to_labels** | for each found incident from the **instance_of** query, we query the English label  |
+| **id_props** | we query for all properties that are descendants of [Wikidata property for an identifier](https://www.wikidata.org/wiki/Q19847637) which we discard |  
 | **prop_to_labels**  | we query for all properties with their English labels  |  
 | **event_type_to_labels** | for each found event type from the **subclass_of** query, we query for an English label |
 

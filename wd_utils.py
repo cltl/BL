@@ -51,6 +51,12 @@ QUERIES = {
           ?incident rdfs:label ?label .
           filter langMatches( lang(?label), "EN" )
     }""",
+    "id_props" : """SELECT ?prop WHERE {
+        ?prop wikibase:directClaim ?a .
+        ?prop rdfs:label ?label.  
+        filter(lang(?label) = "en") .
+        ?prop wdt:P31*/wdt:P279* wd:Q19847637}
+    """,
     "prop_to_labels": """SELECT ?prop ?label WHERE {
         ?prop wikibase:directClaim ?a .
         ?prop rdfs:label ?label.  
@@ -70,6 +76,7 @@ DEV_LIMIT = 1000000 # how many items do you want to have when you put verbose to
 NUM_RETRIES = 5 # after how many retries do you give up
 LOG_BATCHES = False # if True, send information about each batch to stdout
 OVERWRITE = True # if True, overwrite existing results
+
 
 def preprocess_inc_to_props(output_folder, verbose=0):
     """
@@ -118,6 +125,8 @@ def preprocess_inc_to_labels(output_folder, verbose=0):
         print(f'found {len(inc_wd_uris)} wd incident uris')
 
     return list(inc_wd_uris)
+
+
 
 
 def preprocess_event_type_to_labels(output_folder, verbose=0):
@@ -203,6 +212,8 @@ def post_process_instance_of(response, verbose=0):
 
     return list(set_of_relations)
 
+
+
 def post_process_inc_to_props(response, verbose=0):
     """
     postprocess the response of the "inc_to_props" query
@@ -272,6 +283,27 @@ def post_process_event_type_to_labels(response, verbose=0):
 
     return set_of_relations
 
+def post_process_id_props(response, verbose=0):
+    """
+    postprocess the response of the "id_props" query
+
+    :param dict response: api response
+
+    :rtype: list of wd_prop_uri
+    :return: [wd_prop_uri, ..]
+    """
+    set_of_relations = set()
+
+    for info in response['results']['bindings']:
+        prop = info['prop']['value']
+        set_of_relations.add(prop)
+
+    if verbose >= 2:
+        this_function_name = inspect.currentframe().f_code.co_name
+        print('INSIDE FUNCTION', this_function_name)
+        print(f'found {len(set_of_relations)} Wikidata property identifiers')
+
+    return list(set_of_relations)
 
 def post_process_prop_to_labels(response, verbose=0):
     """
@@ -286,9 +318,9 @@ def post_process_prop_to_labels(response, verbose=0):
     set_of_relations = set()
 
     for info in response['results']['bindings']:
-        event_type = info['prop']['value']
+        prop = info['prop']['value']
         label = info['label']['value']
-        set_of_relations.add((event_type, label))
+        set_of_relations.add((prop, label))
 
     if verbose >= 2:
         this_function_name = inspect.currentframe().f_code.co_name
@@ -377,6 +409,32 @@ def call_wikidata(sparql_query,
     return post_processed
 
 
+def remove_prop_ids_from_props(all_props, output_folder, verbose=0):
+    """
+    filter Wikidata property identifiers from all properties
+
+    :param set all_props: output from post_process_prop_to_labels
+    :param str output_folder: the output folder
+    """
+
+    with open(f'{output_folder}/id_props.json') as infile:
+        prop_ids = json.load(infile)
+
+    statement_props = set()
+
+    for prop_uri, label in all_props:
+        if prop_uri not in prop_ids:
+            statement_props.add((prop_uri, label))
+
+    if verbose >= 2:
+        this_function_name = inspect.currentframe().f_code.co_name
+        print('INSIDE FUNCTION', this_function_name)
+        print(f'found {len(statement_props)} Wikidata statements properties')
+        print(f'{len(all_props) - len(statement_props)} Wikidata properties identifiers were discarded')
+
+    return list(statement_props)
+
+
 def run_queries(output_folder, verbose=0):
     """
     run queries as defined in global variable QUERIES
@@ -400,6 +458,9 @@ def run_queries(output_folder, verbose=0):
 
     for query_name, sparql_query in QUERIES.items():
 
+        if query_name not in {'id_props', 'prop_to_labels'}:
+            continue
+
         if sparql_query:
 
             if verbose >= 4:
@@ -412,10 +473,17 @@ def run_queries(output_folder, verbose=0):
 
             if query_name in {'subclass_of',
                               'instance_of',
+                              'id_props',
                               'prop_to_labels'}:
                 post_processed = call_wikidata(sparql_query=sparql_query,
                                                query_name=query_name,
                                                verbose=verbose)
+
+                if query_name == 'prop_to_labels':
+                    post_processed = remove_prop_ids_from_props(post_processed,
+                                                                output_folder,
+                                                                verbose=verbose)
+
 
             elif query_name in {'inc_to_props', 'inc_to_labels',
                                 'event_type_to_labels'}:
