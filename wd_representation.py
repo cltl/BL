@@ -43,6 +43,7 @@ event_type_coll_obj = wd_classes.EventTypeCollection(path_subclass_of_rels=f'{wd
                                                      path_prop_to_labels=f'{wd_cache_folder}/prop_to_labels.json',
                                                      root_node='http://www.wikidata.org/entity/Q1656682',
                                                      needed_properties={'http://www.wikidata.org/prop/direct/P17'},
+                                                     properties_to_ignore={'http://www.wikidata.org/prop/direct/P31', 'http://www.wikidata.org/prop/direct/P279'},
                                                      min_leaf_incident_freq=3,
                                                      verbose=3)
 

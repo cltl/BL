@@ -10,8 +10,6 @@ from wd_utils import from_short_uri_to_full_uri
 # TODO: total cue validity
 # TODO: stats
 #   - which ones to show?
-# TODO: how to filter properties, e.g., (minimum (relative) frequency, which ones to ignore (identifiers)
-#   - no instance_of or subclass_of
 # TODO: think about new ways of creating the experiment
 #   - dive back into the literature
 
@@ -318,7 +316,7 @@ class EventTypeCollection:
         for node in sub_g.nodes():
             full_uri = node.replace('wd:', 'http://www.wikidata.org/entity/')
             event_type_obj = self.event_type_id_to_event_type_obj[full_uri]
-            label = event_type_obj.title_label
+            label = event_type_obj.label_to_show
             freq = event_type_obj.num_incidents
 
             info = {
@@ -335,7 +333,7 @@ class EventTypeCollection:
             print()
             print(f'loaded subgraph graph with {len(sub_g.edges())} edges')
             print(nx.info(sub_g))
-            print('top node:', root_event_type_obj.title_label)
+            print('top node:', root_event_type_obj.label_to_show)
 
 
         # clean graph from leaf nodes without incidents linked to them
@@ -359,7 +357,7 @@ class EventTypeCollection:
             print()
             print(f'after removing leaf nodes: {len(sub_g.edges())} edges')
             print(nx.info(sub_g))
-            print('top node:', root_event_type_obj.title_label)
+            print('top node:', root_event_type_obj.label_to_show)
             print(f'number of leaf nodes: {len(leaf_nodes)}')
 
         return sub_g, leaf_nodes
@@ -410,6 +408,7 @@ class EventType():
                  prefix_uri,
                  ):
         self.title_labels = title_labels
+        self.label_to_show = self.set_label_to_show()
         self.title_id = title_id
         self.full_uri = full_uri
         self.prefix_uri = prefix_uri
@@ -445,6 +444,16 @@ class EventType():
             info.append(f'{len(siblings)} siblings from parent {parent}')
 
         return '\n'.join(info)
+
+    def set_label_to_show(self):
+        label_to_show = self.title_labels.get('en', None)
+
+        if label_to_show is None:
+            for lang, label in self.title_labels.items():
+                label_to_show = label
+                break
+
+        return label_to_show
 
     @property
     def num_incidents(self):
@@ -522,6 +531,7 @@ class Incident:
                  properties,
                  ):
         self.title_labels = title_labels
+        self.label_to_show = self.set_label_to_show()
         self.title_id = title_id
         self.full_uri = full_uri
         self.prefix_uri = prefix_uri
@@ -542,6 +552,16 @@ class Incident:
 
         return '\n'.join(info)
 
+    def set_label_to_show(self):
+        label_to_show = self.title_labels.get('en', None)
+
+        if label_to_show is None:
+            for lang, label in self.title_labels.items():
+                label_to_show = label
+                break
+
+        return label_to_show
+
 
 class Property:
     """
@@ -559,6 +579,7 @@ class Property:
                  prefix_uri
                  ):
         self.title_labels = title_labels
+        self.label_to_show = self.set_label_to_show()
         self.title_id = title_id
         self.full_uri = full_uri
         self.prefix_uri = prefix_uri
@@ -574,6 +595,16 @@ class Property:
             info.append(f'ATTR {attr} has value: {getattr(self, attr)}')
 
         return '\n'.join(info)
+
+    def set_label_to_show(self):
+        label_to_show = self.title_labels.get('en', None)
+
+        if label_to_show is None:
+            for lang, label in self.title_labels.items():
+                label_to_show = label
+                break
+
+        return label_to_show
 
 
 if __name__ == '__main__':
