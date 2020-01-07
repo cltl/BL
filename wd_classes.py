@@ -6,6 +6,7 @@ import networkx as nx
 
 from graph_utils import get_leaf_nodes
 from wd_utils import from_short_uri_to_full_uri
+from stats_utils import show_top_n, get_sample
 
 # TODO: total cue validity
 # TODO: stats
@@ -361,6 +362,64 @@ class EventTypeCollection:
             print(f'number of leaf nodes: {len(leaf_nodes)}')
 
         return sub_g, leaf_nodes
+
+
+    def vizualize(self, root=None, from_to=None):
+        """
+
+
+        """
+        assert [root, from_to].count(None) == 1, f'you can only provide root OR from_to'
+
+    def create_hover_text(self,
+                          ev_type_obj,
+                          prop_stats='properties_aggregated',
+                          ):
+        """
+`       create hover text for vizualizing EventType instance
+
+        :param EventType ev_type_obj: instance of class EventType
+        :param str prop_stats: properties_aggregated | cue_validities
+
+        :rtype: str
+        :return: the hover text
+        """
+        options = {'properties_aggregated', 'cue_validities'}
+        assert prop_stats in options, f'please choose for prop_stats from {options}'
+
+        info = []
+
+        # Incident count per language
+        info.append(f'\n### Number of incidents per language')
+        lang_to_num_incidents = defaultdict(int)
+        for inc_obj in ev_type_obj.incidents:
+            for lang in inc_obj.title_labels.items():
+                lang_to_num_incidents[lang] += 1
+
+        for lang, num_incidents in lang_to_num_incidents.items():
+            info.append(f'LANG: {lang}: {num_incidents} incidents')
+
+        # Properties
+        info.append(f'\n### Shared properties')
+        prop_dict = getattr(ev_type_obj, prop_stats)
+        prop_df = show_top_n(a_dict=prop_dict,
+                             id_to_class_instance=self.event_type_id_to_event_type_obj,
+                             label='label_to_show',
+                             n=10)
+
+        for index, row in prop_df.iterrows():
+            info.append(f'{row["Item"]} - {row["Value"]}')
+
+        # Examples
+        info.append(f'\n### Sample of Incidents')
+        inc_uris = [inc_obj.full_uri
+                    for inc_obj in ev_type_obj.incidents]
+        the_sample = get_sample(inc_uris, 5)
+
+        for sample_inc_uri in the_sample:
+            info.append(f'{sample_inc_uri}')
+
+        return '\n'.join(info)
 
     def compute_stats(self, root_node, min_leaf_incident_freq, needed_properties):
         stats = {}
