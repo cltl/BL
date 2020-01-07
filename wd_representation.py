@@ -10,7 +10,7 @@ def validate(event_type_coll_obj):
 
     for prop_uri, needed_label in prop_to_label.items():
         prop_obj = event_type_coll_obj.prop_id_to_prop_obj[prop_uri]
-        prop_obj.title_label == needed_label, f'mismatch between expected {needed_label} and actual label {prop_obj.title_label}'
+        prop_obj.label_to_show == needed_label, f'mismatch between expected {needed_label} and actual label {prop_obj.label_to_show}'
 
     # incidents
     inc_uri_to_keyword = {
@@ -19,7 +19,7 @@ def validate(event_type_coll_obj):
 
     for inc_uri, keyword in inc_uri_to_keyword.items():
         inc_obj = event_type_coll_obj.inc_id_to_inc_obj[inc_uri]
-        assert keyword in inc_obj.title_label, f'needed keyword {keyword} not found in label {inc_obj.title_label}'
+        assert keyword in inc_obj.label_to_show, f'needed keyword {keyword} not found in label {inc_obj.label_to_show}'
 
     # event type -> incidents
     evt_to_min_num_incidents = {
