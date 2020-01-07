@@ -3,6 +3,7 @@ import pickle
 from collections import defaultdict
 
 import networkx as nx
+import graphviz as gv
 
 from graph_utils import get_leaf_nodes
 from wd_utils import from_short_uri_to_full_uri
@@ -364,12 +365,28 @@ class EventTypeCollection:
         return sub_g, leaf_nodes
 
 
-    def vizualize(self, root=None, from_to=None):
+    def vizualize(self, root=None, from_to=None, output_path=None):
         """
+        create vizualization in dot
 
+        :param root: either None, or EventType identifier
+        when provided, the subgraph with this root is created
+        :param from_to: either None, path from (from, to) each being an EventType identifier
+        :param output_path: if provided, an svg is stored at this path
 
         """
         assert [root, from_to].count(None) == 1, f'you can only provide root OR from_to'
+
+        if output_path:
+            assert output_path.endswith('.svg'), f'output path has to end with .svg'
+
+        if root is not None:
+            descendants = None
+
+        nodes = []
+        edges = []
+
+        g = gv.diGraph()
 
     def create_hover_text(self,
                           ev_type_obj,
@@ -393,7 +410,7 @@ class EventTypeCollection:
         info.append(f'\n### Number of incidents per language')
         lang_to_num_incidents = defaultdict(int)
         for inc_obj in ev_type_obj.incidents:
-            for lang in inc_obj.title_labels.items():
+            for lang, title in inc_obj.title_labels.items():
                 lang_to_num_incidents[lang] += 1
 
         for lang, num_incidents in lang_to_num_incidents.items():
@@ -403,8 +420,8 @@ class EventTypeCollection:
         info.append(f'\n### Shared properties')
         prop_dict = getattr(ev_type_obj, prop_stats)
         prop_df = show_top_n(a_dict=prop_dict,
-                             id_to_class_instance=self.event_type_id_to_event_type_obj,
-                             label='label_to_show',
+                             id_to_class_instance=self.prop_id_to_prop_obj,
+                             label_attr_name='label_to_show',
                              n=10)
 
         for index, row in prop_df.iterrows():
