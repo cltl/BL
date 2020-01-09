@@ -68,7 +68,7 @@ class EventTypeCollection:
         # restrict to only event subgraph
         self.event_type_id_to_event_type_obj = {event_uri : event_type_obj
                                                 for event_uri, event_type_obj in self.event_type_id_to_event_type_obj.items()
-                                                if event_type_obj.prefix_uri in self.g}
+                                                if event_type_obj.title_id in self.g}
 
         self.prop_to_freq, \
         self.evtype_and_prop_to_freq = self.compute_prop_freq()
@@ -305,13 +305,13 @@ class EventTypeCollection:
             print(nx.info(g))
 
         root_event_type_obj = self.event_type_id_to_event_type_obj[root_node_id]
-        the_descendants = nx.descendants(g, root_event_type_obj.prefix_uri)
+        the_descendants = nx.descendants(g, root_event_type_obj.title_id)
 
         if self.verbose >= 2:
             print()
-            print(f'found {len(the_descendants)} for root node {root_event_type_obj.prefix_uri}')
+            print(f'found {len(the_descendants)} for root node {root_event_type_obj.title_id}')
 
-        the_descendants.add(root_event_type_obj.prefix_uri)
+        the_descendants.add(root_event_type_obj.title_id)
         sub_g = g.subgraph(the_descendants).copy()
 
         node_attrs = {}
@@ -383,8 +383,8 @@ class EventTypeCollection:
 
         if root is not None:
             root_ev_type_obj = self.event_type_id_to_event_type_obj[root]
-            the_descendants = nx.descendants(self.g, root_ev_type_obj.prefix_uri)
-            the_descendants.add(root_ev_type_obj.prefix_uri)
+            the_descendants = nx.descendants(self.g, root_ev_type_obj.title_id)
+            the_descendants.add(root_ev_type_obj.title_id)
             sub_g = self.g.subgraph(the_descendants).copy()
 
             nodes = list(sub_g.nodes())
@@ -432,8 +432,8 @@ class EventTypeCollection:
 
         # create subgraph
         root_ev_type_obj = self.event_type_id_to_event_type_obj[root]
-        the_descendants = nx.descendants(self.g, root_ev_type_obj.prefix_uri)
-        the_descendants.add(root_ev_type_obj.prefix_uri)
+        the_descendants = nx.descendants(self.g, root_ev_type_obj.title_id)
+        the_descendants.add(root_ev_type_obj.title_id)
         sub_g = self.g.subgraph(the_descendants).copy()
 
         nodes = list(sub_g.nodes())
@@ -460,7 +460,7 @@ class EventTypeCollection:
         # create tree data
         tree_data = dict()
 
-        parents = {root_ev_type_obj.prefix_uri}
+        parents = {root_ev_type_obj.title_id}
         children = {self.event_type_id_to_event_type_obj[f'http://www.wikidata.org/entity/{child}'].til
                     for parent in parents
                     for child in sub_g.successors(parent)}
@@ -666,28 +666,28 @@ class EventType():
 
 
     def set_children(self, g):
-        children = g.successors(self.prefix_uri)
+        children = g.successors(self.title_id)
         self.children = {from_short_uri_to_full_uri(child)
                          for child in children}
 
     def set_parents(self, g):
-        parents = g.predecessors(self.prefix_uri)
+        parents = g.predecessors(self.title_id)
         self.parents = {from_short_uri_to_full_uri(parent)
                         for parent in parents}
 
 
     def set_subsumers(self, g):
-        subsumers = nx.descendants(g, self.prefix_uri)
+        subsumers = nx.descendants(g, self.title_id)
         self.subsumers = {from_short_uri_to_full_uri(subsumer)
                           for subsumer in subsumers}
 
     def set_parent_to_siblings(self, g):
         self.parent_to_siblings = {}
 
-        parents = g.predecessors(self.prefix_uri)
+        parents = g.predecessors(self.title_id)
         for parent in parents:
             all_children = g.successors(parent)
-            children_minus_this_event = set(all_children) - {self.prefix_uri}
+            children_minus_this_event = set(all_children) - {self.title_id}
             children_minus_this_event_full = {
                 from_short_uri_to_full_uri(child)
                 for child in children_minus_this_event
