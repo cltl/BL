@@ -316,7 +316,7 @@ class EventTypeCollection:
 
         node_attrs = {}
         for node in sub_g.nodes():
-            full_uri = node.replace('wd:', 'http://www.wikidata.org/entity/')
+            full_uri = f'http://www.wikidata.org/entity/{node}'
             event_type_obj = self.event_type_id_to_event_type_obj[full_uri]
             label = event_type_obj.label_to_show
             freq = event_type_obj.num_incidents
