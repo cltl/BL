@@ -292,8 +292,8 @@ class EventTypeCollection:
 
             if all([event_obj_x,
                     event_obj_y]):
-                relations.append((event_obj_y.prefix_uri,
-                                  event_obj_x.prefix_uri))
+                relations.append((event_obj_y.title_id,
+                                  event_obj_x.title_id))
 
         g = nx.DiGraph()
         g.add_edges_from(relations)
@@ -369,10 +369,11 @@ class EventTypeCollection:
         """
         create vizualization in dot
 
-        :param root: either None, or EventType identifier
+        :param root: either None, or EventType identifier e.g., 'http://www.wikidata.org/entity/Q40231'
         when provided, the subgraph with this root is created
         :param from_to: either None, path from (from, to) each being an EventType identifier
         :param output_path: if provided, an svg is stored at this path
+        e.g., ('http://www.wikidata.org/entity/Q40231', 'http://www.wikidata.org/entity/Q1656682')
 
         """
         assert [root, from_to].count(None) == 1, f'you can only provide root OR from_to'
@@ -381,12 +382,113 @@ class EventTypeCollection:
             assert output_path.endswith('.svg'), f'output path has to end with .svg'
 
         if root is not None:
-            descendants = None
+            root_ev_type_obj = self.event_type_id_to_event_type_obj[root]
+            the_descendants = nx.descendants(self.g, root_ev_type_obj.prefix_uri)
+            the_descendants.add(root_ev_type_obj.prefix_uri)
+            sub_g = self.g.subgraph(the_descendants).copy()
 
-        nodes = []
-        edges = []
+            nodes = list(sub_g.nodes())
+            edges = list(sub_g.edges())
 
-        g = gv.diGraph()
+        g = gv.Digraph()
+
+        for node in nodes:
+            ev_type_uri = node.replace('wd:', 'http://www.wikidata.org/entity/')
+            ev_type_obj = self.event_type_id_to_event_type_obj[ev_type_uri]
+            hover_text = self.create_hover_text(ev_type_obj)
+            g.node(node.replace('wd:', ''),
+                   tooltip=hover_text)
+
+        for parent, child in edges:
+            g.edge(parent.replace('wd:', ''),
+                   child.replace('wd:', ''))
+
+        g.format = 'svg'
+
+        if output_path is not None:
+            g.render(output_path)
+
+        return g
+
+
+    def create_d3_tree(self,
+                       root,
+                       output_path,
+                       template_path='vizualizations/template_d3_tree.html',
+                       verbose=0):
+        """
+        create input formats for the d3 tree vizualition
+        (see vizualizations/template_d3_tree.html)
+
+
+        :param root: EventType identifier e.g., 'http://www.wikidata.org/entity/Q40231'
+        when provided, the subgraph with this root is created
+        :param str template_path: where the template is stored that will be enriched to create the vizualization
+        :param output_path: if provided:
+            -hover_dict and tree_data will replace INSERT_TREE_DATA_AND_DICT on line 68 of template_path
+        the result will be stored at output_path
+        """
+        assert root in self.event_type_id_to_event_type_obj, f'{root} not found'
+
+        # create subgraph
+        root_ev_type_obj = self.event_type_id_to_event_type_obj[root]
+        the_descendants = nx.descendants(self.g, root_ev_type_obj.prefix_uri)
+        the_descendants.add(root_ev_type_obj.prefix_uri)
+        sub_g = self.g.subgraph(the_descendants).copy()
+
+        nodes = list(sub_g.nodes())
+        edges = list(sub_g.edges())
+
+        if verbose >= 2:
+            print()
+            print(f'for root {root}')
+            print(f'found {len(nodes)} nodes')
+            print(f'found {len(edges)} edges')
+            print(nx.info(sub_g))
+
+        # create hover_dict
+        hover_dict = {}
+
+        for node in nodes:
+            ev_type_uri = node.replace('wd:', 'http://www.wikidata.org/entity/')
+            ev_type_obj = self.event_type_id_to_event_type_obj[ev_type_uri]
+            hover_text = self.create_hover_text(ev_type_obj)
+
+            node_id = f'{node} ({ev_type_obj.label_to_show})'
+            hover_dict[node_id] = hover_text
+
+        # create tree data
+        tree_data = dict()
+
+        parents = {root_ev_type_obj.prefix_uri}
+        children = {self.event_type_id_to_event_type_obj[f'http://www.wikidata.org/entity/{child}'].til
+                    for parent in parents
+                    for child in sub_g.successors(parent)}
+
+        print(parents)
+        print(children)
+
+        # update template and save on disk
+        list_hover_dict = ['let dict={};']
+
+        for node_id, hover_text in hover_dict.items():
+            list_hover_dict.append(f'dict["{node_id}"] = `{hover_text}`;')
+
+        string_hover_dict = '\n'.join(list_hover_dict)
+
+        with open(template_path) as infile:
+            raw = infile.read()
+
+        raw = raw.replace('INSERT_TREE_DATA_AND_DICT', string_hover_dict)
+
+        with open(output_path, 'w') as outfile:
+            outfile.write(raw)
+
+
+
+
+
+
 
     def create_hover_text(self,
                           ev_type_obj,
@@ -513,11 +615,15 @@ class EventType():
 
         for count_attr in count_attrs:
             value = getattr(self, count_attr)
-            info.append(f'ATTR {count_attr} has {len(value)} items')
+            if value:
+                len_value = len(value)
+            else:
+                len_value = 0
+            info.append(f'ATTR {count_attr} has {len_value} items')
 
-
-        for parent, siblings in self.parent_to_siblings.items():
-            info.append(f'{len(siblings)} siblings from parent {parent}')
+        if self.parent_to_siblings is not None:
+            for parent, siblings in self.parent_to_siblings.items():
+                info.append(f'{len(siblings)} siblings from parent {parent}')
 
         return '\n'.join(info)
 
