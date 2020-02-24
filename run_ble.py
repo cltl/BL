@@ -23,13 +23,13 @@ print()
 threshold = int(arguments['--threshold'])
 
 # path to directed graph (see bottom of ble_classes.py for example)
-path = 'resources/multilingual-wiki-event-pipeline/ontology/g.p'
+path = 'development/g.p'
 g = nx.read_gpickle(path)
 
 bl_coll_obj = bl_classes.BLCollection(g=g,
                                       resource='Wikidata',
                                       output_folder='output',
-                                      root_node='wd:Q1656682',
+                                      root_node='Q1656682',
                                       weight_property='occurrence_frequency',
                                       subsumer_threshold=threshold,
                                       root_zero=True,

@@ -69,6 +69,7 @@ def get_overview_table(input_folder,
         headers = ['TH'] + new_headers
     df = pandas.DataFrame(list_of_lists, columns=headers)
 
+
     if excel_path is not None:
         df.to_excel(excel_path, index=False)
 

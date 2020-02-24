@@ -1,6 +1,9 @@
 import json
 import pickle
+import sys
 from collections import defaultdict
+import os
+import shutil
 
 import networkx as nx
 import graphviz as gv
@@ -9,11 +12,6 @@ from graph_utils import get_leaf_nodes
 from wd_utils import from_short_uri_to_full_uri
 from stats_utils import show_top_n, get_sample
 
-# TODO: total cue validity
-# TODO: stats
-#   - which ones to show?
-# TODO: think about new ways of creating the experiment
-#   - dive back into the literature
 
 class EventTypeCollection:
     """
@@ -70,6 +68,9 @@ class EventTypeCollection:
                                                 for event_uri, event_type_obj in self.event_type_id_to_event_type_obj.items()
                                                 if event_type_obj.title_id in self.g}
 
+        # create inc_uri to event types
+        self.inc_uri_to_event_types = self.get_inc_uri_to_event_types()
+
         self.prop_to_freq, \
         self.evtype_and_prop_to_freq = self.compute_prop_freq()
         self.update_cue_validities()
@@ -90,6 +91,120 @@ class EventTypeCollection:
             info.append(f'STATISTIC {stat}: value {value}')
 
         return '\n'.join(info)
+
+
+    def incorporate_incident_collection(self,
+                                        path_to_mwep_repo,
+                                        path_to_incident_coll_obj,
+                                        path_mwep_wiki_output_folder,
+                                        path_wd_wiki_output_folder,
+                                        verbose=0):
+        """
+        Incorporate output from MWEP (https://github.com/cltl/multilingual-wiki-event-pipeline)
+        into this EventTypeCollection by loading IncidentCollection object
+        and enrichinng Incidents with ReferenceTexts
+
+        :param str path_to_mwep_repo: path to mwep repo
+        https://github.com/cltl/multilingual-wiki-event-pipeline/blob/master/classes.py
+        :param str path_to_incident_coll_obj: where IncidentCollection object from MWEP is stored
+        :param str path_mwep_wiki_output_folder: folder where MWEP stored the NAF files,
+        very likely called 'wiki_output'
+        :param str path_wd_wiki_output_folder: folder where you want to store the NAF files
+        that have been incorporated into EventTypeCollection
+        """
+        # load incident collection object
+        sys.path.append(path_to_mwep_repo) # this is not elegant but it solves the problem
+        import classes
+        sys.path.remove(path_to_mwep_repo) # this is not elegant but it solves the problem
+
+        # load IncidentCollection
+        with open(path_to_incident_coll_obj, 'rb') as infile:
+            inc_coll_obj = pickle.load(infile)
+
+        del classes # this is not elegant but it solves the problem
+
+        if verbose >= 1:
+            print()
+            print(f'loaded IncidentCollection from {path_to_incident_coll_obj}')
+
+
+        # create wiki_output folders
+        if not os.path.exists(path_wd_wiki_output_folder):
+            os.mkdir(path_wd_wiki_output_folder)
+            if verbose >= 1:
+                print()
+                print(f'created folder {path_wd_wiki_output_folder}')
+
+        # update incidents
+        incs_found_in_event_type_coll = set()
+        ref_texts_added = set()
+        for mwep_inc_obj in inc_coll_obj.incidents:
+            full_inc_uri = f'http://www.wikidata.org/entity/{mwep_inc_obj.wdt_id}'
+
+            event_type_uris = self.inc_uri_to_event_types.get(full_inc_uri, None)
+
+            if event_type_uris is None:
+                continue
+
+            inc_obj = self.inc_id_to_inc_obj.get(full_inc_uri, None)
+
+            if inc_obj is None:
+                continue
+
+            incs_found_in_event_type_coll.add(full_inc_uri)
+
+            # update Incident class from EventTypeCollection
+            inc_obj.extra_info.update(mwep_inc_obj.extra_info)
+
+            # update reference texts
+            for mwep_ref_text_obj in mwep_inc_obj.reference_texts:
+
+                new_ref_text_obj = ReferenceText(title=mwep_ref_text_obj.name,
+                                                 language=mwep_ref_text_obj.language,
+                                                 category='secondary' # TODO: update when using primary reference texts
+                                                 )
+
+                # store on disk
+                wiki_output_lang_folder = os.path.join(path_wd_wiki_output_folder, new_ref_text_obj.language)
+                if not os.path.exists(wiki_output_lang_folder):
+                    os.mkdir(wiki_output_lang_folder)
+
+                mwep_naf_path = new_ref_text_obj.get_naf_path_of_reference_text(path_mwep_wiki_output_folder)
+                wd_naf_path = new_ref_text_obj.get_naf_path_of_reference_text(path_wd_wiki_output_folder)
+
+                if os.path.exists(mwep_naf_path):
+                    shutil.copy(mwep_naf_path, wd_naf_path)
+                    inc_obj.reference_texts[new_ref_text_obj.title_id] = new_ref_text_obj
+                    ref_texts_added.add(new_ref_text_obj.title_id)
+
+        if verbose >= 1:
+            print()
+            print(f'found {len(incs_found_in_event_type_coll)} matching Incidents from the total {len(inc_coll_obj.incidents)} from the IncidentCollection in the EventTypeCollection')
+            print('When an Incident was not found in the EventTypeCollection, this is probably due to the requirements to be allowed into the EventTypeCollection.')
+            print()
+            print(f'added {len(ref_texts_added)} ReferenceTexts')
+
+
+
+        # update reference texts
+
+    def get_inc_uri_to_event_types(self):
+        """
+        create a mapping from Incident full uri ->
+        the event types that the Incident has been tagged with in Wikidata
+
+        :rtype: dict
+        :return: mapping from Incident full uri -> event types
+        """
+        inc_uri_to_event_types = defaultdict(set)
+        for event_type_id, event_type_obj in self.event_type_id_to_event_type_obj.items():
+            for inc_obj in event_type_obj.incidents:
+                inc_uri_to_event_types[inc_obj.full_uri].add(event_type_obj.full_uri)
+
+        if self.verbose >= 1:
+            print(f'{len(inc_uri_to_event_types)} Incident uris have at least one event type')
+
+        return inc_uri_to_event_types
 
     def get_property_to_property_obj(self, path_prop_to_labels, properties_to_ignore):
         """
@@ -414,19 +529,21 @@ class EventTypeCollection:
     def create_d3_tree(self,
                        root,
                        output_path,
-                       template_path='vizualizations/template_d3_tree.html',
+                       template_path='vizualizations/template_d3.html',
+                       exclude_leaf_nodes=False,
                        verbose=0):
         """
         create input formats for the d3 tree vizualition
-        (see vizualizations/template_d3_tree.html)
+        (see vizualizations/template_d3.html)
 
 
         :param root: EventType identifier e.g., 'http://www.wikidata.org/entity/Q40231'
         when provided, the subgraph with this root is created
         :param str template_path: where the template is stored that will be enriched to create the vizualization
         :param output_path: if provided:
-            -hover_dict and tree_data will replace INSERT_TREE_DATA_AND_DICT on line 68 of template_path
+            -links will replace INSERT_LINKS_HERE on line 49 of template_path
         the result will be stored at output_path
+        :param bool exclude_leaf_nodes: if True, nodes without children or not included in the vizualization
         """
         assert root in self.event_type_id_to_event_type_obj, f'{root} not found'
 
@@ -434,6 +551,11 @@ class EventTypeCollection:
         root_ev_type_obj = self.event_type_id_to_event_type_obj[root]
         the_descendants = nx.descendants(self.g, root_ev_type_obj.title_id)
         the_descendants.add(root_ev_type_obj.title_id)
+
+        if exclude_leaf_nodes:
+            the_descendants = {node
+                               for node in the_descendants
+                               if node not in self.leaf_nodes}
         sub_g = self.g.subgraph(the_descendants).copy()
 
         nodes = list(sub_g.nodes())
@@ -450,25 +572,13 @@ class EventTypeCollection:
         hover_dict = {}
 
         for node in nodes:
-            ev_type_uri = node.replace('wd:', 'http://www.wikidata.org/entity/')
+            ev_type_uri = f'http://www.wikidata.org/entity/{node}'
             ev_type_obj = self.event_type_id_to_event_type_obj[ev_type_uri]
             hover_text = self.create_hover_text(ev_type_obj)
 
             node_id = f'{node} ({ev_type_obj.label_to_show})'
             hover_dict[node_id] = hover_text
 
-        # create tree data
-        tree_data = dict()
-
-        parents = {root_ev_type_obj.title_id}
-        children = {self.event_type_id_to_event_type_obj[f'http://www.wikidata.org/entity/{child}'].til
-                    for parent in parents
-                    for child in sub_g.successors(parent)}
-
-        print(parents)
-        print(children)
-
-        # update template and save on disk
         list_hover_dict = ['let dict={};']
 
         for node_id, hover_text in hover_dict.items():
@@ -476,10 +586,18 @@ class EventTypeCollection:
 
         string_hover_dict = '\n'.join(list_hover_dict)
 
+        # create tree data
+        links = set()
+
+        for source, target in sub_g.edges():
+            links.add(f'''{{source: "{source}", target: "{target}"}}''')
+
+        string_links = ',\n'.join(links)
+
         with open(template_path) as infile:
             raw = infile.read()
 
-        raw = raw.replace('INSERT_TREE_DATA_AND_DICT', string_hover_dict)
+        raw = raw.replace('INSERT_LINKS_HERE', string_links)
 
         with open(output_path, 'w') as outfile:
             outfile.write(raw)
@@ -597,6 +715,8 @@ class EventType():
         self.parents = None             # is updated by set_parents
         self.subsumers = None           # is updated by set_subsumers
         self.parent_to_siblings = None  # is updated by set_parent_to_siblings
+        self.siblings = None            # is updated by set_parent_to_siblings
+
 
     def __str__(self):
         info = ['Information about EventType:']
@@ -683,6 +803,7 @@ class EventType():
 
     def set_parent_to_siblings(self, g):
         self.parent_to_siblings = {}
+        self.siblings = set()
 
         parents = g.predecessors(self.title_id)
         for parent in parents:
@@ -692,6 +813,8 @@ class EventType():
                 from_short_uri_to_full_uri(child)
                 for child in children_minus_this_event
             }
+
+            self.siblings.update(children_minus_this_event_full)
             self.parent_to_siblings[from_short_uri_to_full_uri(parent)] = children_minus_this_event_full
 
 class Incident:
@@ -720,6 +843,13 @@ class Incident:
         self.properties = properties
         self.unique_properties = {prop_obj.full_uri for prop_obj in self.properties}
 
+        # extra_info to be updated by integrating Incident.extra_info
+        # from MWEP (https://github.com/cltl/multilingual-wiki-event-pipeline/blob/master/classes.py
+        self.extra_info = dict()
+
+        # reference_texts to be updated with instances of ReferenceText objects
+        self.reference_texts = {}
+
 
     def __str__(self):
         info = ['Information about Incident:']
@@ -744,6 +874,61 @@ class Incident:
 
         return label_to_show
 
+class ReferenceText:
+    """
+    represents a Reference text,
+    i.e., a document making reference to an Incident
+
+    we distinguish between:
+    -primary reference texts: (news) articles discussing the Incident
+    -secondary reference texts: an article that is written to summarize various primary reference texts,
+    e.g., a Wikipedia article
+
+    """
+    def __init__(self,
+                 title,
+                 language,
+                 category):
+        self.title = title # title of the reference text
+        self.language = language # the language the article is written in
+        self.category = category # primary | secondary
+        self.title_id = (self.language, self.title)
+
+
+    def __str__(self):
+        info = ['Information about ReferenceText:']
+
+        attrs = ['title',
+                 'language',
+                 'category']
+        for attr in attrs:
+            info.append(f'ATTR {attr} has value: {getattr(self, attr)}')
+
+        return '\n'.join(info)
+
+    def get_naf_path_of_reference_text(self, wiki_output_folder):
+        """
+        The NAF representations of the ReferenceTexts are stored in a folder, which is organized
+        in the following way:
+        wiki_output_folder:
+            language1
+                title.naf
+                title.naf
+            language2
+                title.naf
+            languagen
+
+        :param str wiki_output: folder where the NAF files are stored,
+        very likely with the name "wiki_output"
+
+        :rtype: str
+        :return: the path to the NAF file
+        """
+        naf_path = os.path.join(wiki_output_folder,
+                                self.language,
+                                f'{self.title}.naf')
+
+        return naf_path
 
 class Property:
     """
