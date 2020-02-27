@@ -185,8 +185,45 @@ class EventTypeCollection:
             print(f'added {len(ref_texts_added)} ReferenceTexts')
 
 
+    def get_paths_of_reftexts_of_one_event_subgraph(self,
+                                                    event_full_uri,
+                                                    wiki_output_folder,
+                                                    verbose=0):
+        """
+        given an event uri, e.g., http://www.wikidata.org/entity/Q2540467,
+        this method:
+        a) obtain all subsumers of this event type
+        b) for each subsumer, and also the event type itself,
+        all the Incidents are iterated all the paths of all ReferenceTexts are returned
 
-        # update reference texts
+        :param str event_id: e.g., http://www.wikidata.org/entity/Q2540467
+        :param str wiki_output_folder: the folder with the NAF output from MWEP,
+        very likely called 'wiki_output' with probably three folders 'en', 'nl', and 'it'
+        :return: set of absolute XML paths
+        """
+        main_ev_obj = self.event_type_id_to_event_type_obj[event_full_uri]
+
+        naf_paths = set()
+
+        all_relevant_ev_types = set([event_full_uri])
+        all_relevant_ev_types.update([f'http://www.wikidata.org/entity/{subsumer}'
+                                      for subsumer in main_ev_obj.subsumers])
+
+        if verbose >= 1:
+            print(f'found {len(all_relevant_ev_types)} event type + subsumers')
+
+        for relevant_ev_type in all_relevant_ev_types:
+            ev_obj = self.event_type_id_to_event_type_obj[relevant_ev_type]
+            for inc_obj in ev_obj.incidents:
+                for ref_text_obj in inc_obj.reference_texts.values():
+                    naf_path = ref_text_obj.get_naf_path_of_reference_text(wiki_output_folder)
+                    assert os.path.exists(naf_path), f'{naf_path} does not exist on disk. Please inspect.'
+                    naf_paths.add(naf_path)
+
+        if verbose >= 1:
+            print(f'found {len(naf_paths)} ReferenceTexts of event type {event_full_uri}')
+
+        return naf_paths
 
     def get_inc_uri_to_event_types(self):
         """

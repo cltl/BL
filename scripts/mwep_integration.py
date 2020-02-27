@@ -3,12 +3,14 @@ Incorporate MWEP (https://github.com/cltl/multilingual-wiki-event-pipeline)
 output into EventTypeCollection as defined in wd_classes.py
 
 Usage:
-  mwep_integration.py --path_ev_type_coll=<path_ev_type_coll> --path_mwep_repo=<path_mwep_repo>\
+  mwep_integration.py --path_ev_type_coll=<path_ev_type_coll> --outpath_ev_type_coll=<outpath_ev_type_coll>\
+  --path_mwep_repo=<path_mwep_repo>\
   --path_inc_coll_obj=<path_inc_coll_obj>  --path_mwep_wiki_output=<path_mwep_wiki_output>\
   --path_wd_wiki_output=<path_wd_wiki_output> --verbose=<verbose>
 
 Options:
     --path_ev_type_coll=<path_ev_type_coll> path where the pickled EventTypeCollection is stored on disk
+    --outpath_ev_type_coll=<outpath_ev_type_coll> path where the updated pickled EventTypeCollection is stored on disk
     --path_mwep_repo=<path_mwep_repo> path where the MWEP repository is stored on disk
     --path_inc_coll_obj=<path_inc_coll_obj> path where the pickled IncidentCollection from MWEP is stored on disk
     --path_mwep_wiki_output=<path_mwep_wiki_output> path to folder where the NAF files are stored as output of running MWEP
@@ -38,4 +40,4 @@ ev_type_coll.incorporate_incident_collection(path_to_mwep_repo=arguments['--path
                                              verbose=verbose)
 
 # overwrite EventTypeCollection on disk
-ev_type_coll.pickle_it(arguments['--path_ev_type_coll'])
+ev_type_coll.pickle_it(arguments['--outpath_ev_type_coll'])
