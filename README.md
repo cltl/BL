@@ -8,11 +8,10 @@ into the Basic Level (Event). The most used resource is [Wikidata](https://www.w
 Python 3.6 was used to create this project. It might work with older versions of Python.
 
 ### Usage
-This repository has two main purposes:
+This repository has several purposes:
 1. represent Wikidata in Python classes (see [Wikidata Representation](documentation/wikidata_representation.md) )
 2. Incorporating output from [MWEP](https://github.com/cltl/multilingual-wiki-event-pipeline) into the Wikidata representation. (see [Incorporating MWEP into Wikidata representation](documentation/incorporating_MWEP.md) )
 3. Basic Level Detection (see [Basic Level Detection](documentation/basic_level_detection.md))
-
 
 ### Python modules
 A number of external modules need to be installed, which are listed in **requirements.txt**.
