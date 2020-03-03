@@ -9,4 +9,6 @@ mkdir $export_folder
 
 cp install.sh $export_folder
 cp how_to_use.py $export_folder
+cp requirements.txt $export_folder
+cp README.md $export_folder
 
