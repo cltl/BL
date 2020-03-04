@@ -214,7 +214,10 @@ class BLCollection:
         return info
 
 
-    def print_bles(self, min_cumulative_freq=0):
+    def print_bles(self,
+                   min_cumulative_freq=0,
+                   max_cumulative_freq=None,
+                   verbose=0):
 
         attrs = ['weight_value',
                  'node_depth',
@@ -222,7 +225,7 @@ class BLCollection:
                  'cumulative_weight']
 
         list_of_lists = []
-        headers = ['Node label'] + attrs
+        headers = ['Node ID', 'Node label'] + attrs
         covered = set()
         for bl_obj in self.node_id2bl_obj.values():
 
@@ -236,11 +239,29 @@ class BLCollection:
 
             values = [getattr(bl_obj, attr)
                       for attr in attrs]
-            values.insert(0, f'{bl_obj.label} ({bl_obj.id_})')
-            if values[-1] >= min_cumulative_freq:
+            values.insert(0, bl_obj.label)
+            values.insert(0, bl_obj.id_)
+
+            include = True
+
+            cum_inc_weight = bl_obj.cumulative_weight
+
+            if cum_inc_weight <= min_cumulative_freq:
+                include = False
+            if max_cumulative_freq is not None:
+                if cum_inc_weight >= max_cumulative_freq:
+                    include = False
+
+            if include:
                 list_of_lists.append(values)
+            else:
+                if verbose:
+                    print('ignoring')
+                    print(values)
 
         df = pandas.DataFrame(list_of_lists, columns=headers)
+
+        df = df.sort_values('cumulative_weight', ascending=False)
 
         return df
 

@@ -1,4 +1,5 @@
 import wd_classes
+import networkx as nx
 
 def validate(event_type_coll_obj):
 
@@ -34,6 +35,7 @@ def validate(event_type_coll_obj):
 
 wd_cache_folder = 'wd_cache'
 pickle_path = f'{wd_cache_folder}/ev_type_coll.p'
+g_path = f'{wd_cache_folder}/g.p'
 
 event_type_coll_obj = wd_classes.EventTypeCollection(path_subclass_of_rels=f'{wd_cache_folder}/subclass_of.json',
                                                      path_instance_of_rels=f'{wd_cache_folder}/instance_of.json',
@@ -54,8 +56,11 @@ print(event_type_coll_obj)
 
 event_type_coll_obj.pickle_it(pickle_path)
 
+nx.write_gpickle(event_type_coll_obj.g, g_path)
 
 
+print()
+print(f'written directed graph to {g_path}')
 
 
 
