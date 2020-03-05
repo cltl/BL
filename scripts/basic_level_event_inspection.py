@@ -314,6 +314,7 @@ out_dir = '../basic_level_inspection'
 dot_folder = os.path.join(out_dir, 'dot')
 images_folder = os.path.join(out_dir, 'images')
 annotations_folder = os.path.join(out_dir, 'annotations')
+sample_graph_path = f'{out_dir}/sample.edges'
 
 if os.path.exists(out_dir):
     shutil.rmtree(out_dir)
@@ -325,7 +326,9 @@ MIN_INC_FREQ_FOR_LEAF_NODES = 25
 TOP_TEN =  ["Q13406554",
             "Q15275719","Q1856757","Q189760","Q464980",
             "Q645883","Q2627975","Q2761147","Q35140","Q625994"]
-SELECTED_CHILDREN = ["Q200538"]
+SELECTED_CHILDREN = ["Q13406554",
+                     "Q15275719","Q1856757","Q189760","Q464980",
+                     "Q645883","Q2627975","Q2761147","Q35140","Q625994"]
 REMOVE_SUBGRAPH = ['Q1864008']
 export_folder = '../data_releases/test'
 path_the_end_svg = 'the_end.svg'
@@ -350,7 +353,6 @@ non_leaf_nodes = set(ev_type_coll.g.nodes()) - ev_type_coll.leaf_nodes
 # subgraph
 sub_g = ev_type_coll.g.subgraph(non_leaf_nodes).copy()
 
-
 print(type(sub_g))
 
 print()
@@ -370,6 +372,8 @@ sample_graph = determine_sample(subgraph=sub_g,
                                 selected_children=SELECTED_CHILDREN,
                                 remove_subgraphs=REMOVE_SUBGRAPH,
                                 verbose=2)
+
+nx.write_edgelist(sample_graph, sample_graph_path)
 
 convert_to_images(graph=sample_graph,
                   ev_coll_obj=ev_type_coll,
