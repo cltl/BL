@@ -12,6 +12,7 @@ all_annotations_folder
 
 Usage:
   basic_level_event_annotation_analysis.py --all_annotations_folder=<all_annotations_folder>\
+    --path_ev_coll_obj=<path_ev_coll_obj>\
     --path_to_sample_graph_edges=<path_to_sample_graph_edges>\
     --results_folder=<results_folder>\
     --users=<users> --batches=<batches>
@@ -19,6 +20,7 @@ Usage:
 
 Options:
     --all_annotations_folder=<all_annotations_folder> folder of the format see above
+    --path_ev_coll_obj=<path_ev_coll_obj> path to pickled EventTypeCollection object (see ../wd_classes.py)
     --path_to_sample_graph_edges=<path_to_sample_graph_edges> path to nx edge list
     --results_folder=<results_folder> the results folder (overwritten if exists)
     --users=<users> the users concatenated by ---, probably "Piek---Antske"
@@ -27,6 +29,7 @@ Options:
 
 Example:
     python basic_level_event_annotation_analysis.py --all_annotations_folder="../ble_annotation"\
+    --path_ev_coll_obj="../wd_cache/ev_type_coll.p"\
     --path_to_sample_graph_edges="../basic_level_inspection/sample.edges"\
     --results_folder="../ble_annotation/results" \
     --users="Piek---Antske" --batches="other---sport"\
@@ -35,16 +38,24 @@ Example:
 from docopt import docopt
 import os
 import shutil
+import sys
+import pickle
+sys.path.append('../')
+
+import networkx as nx
 
 import annotation_utils as utils
 
 ANNOTATION_TASKS = ["participants", "subevents"]
+MAX_DELTA_BETWEEN_ANNOTATIONS = 1
 
 # load arguments
 arguments = docopt(__doc__)
 output_folder = arguments['--results_folder']
 main_anno_folder = arguments['--all_annotations_folder']
 path_edge_list = arguments['--path_to_sample_graph_edges']
+ev_coll_obj = pickle.load(open(arguments['--path_ev_coll_obj'],
+                               'rb'))
 
 users = list(arguments['--users'].split('---'))
 batches =list(arguments['--batches'].split('---'))
@@ -69,11 +80,18 @@ edge_to_user_to_task_to_value = utils.combine_annotations(users=users,
                                                           verbose=verbose)
 
 
+
 for annotation_task in ANNOTATION_TASKS:
     utils.compute_agreement(edge_to_user_to_task_to_value,
                             annotation_task,
                             output_folder=output_folder,
                             verbose=verbose)
+
+    kappa = utils.obtain_kappa_score(output_folder, users, annotation_task)
+    print()
+    print('Kappa')
+    print(kappa)
+
 
 
 sample_g = utils.load_graph_from_edgelist(path_to_edge_list=path_edge_list,
@@ -90,17 +108,36 @@ for annotation_task in ANNOTATION_TASKS:
     if verbose >= 2:
         print()
         print(f'analyzing for task {annotation_task}')
-        task_ble_info = utils.determine_candidate_basic_levels(g=sample_anno_g,
-                                                               annotation_task=annotation_task,
-                                                               users=users,
-                                                               verbose=verbose)
 
-        annotation_task_to_ble_info[annotation_task] = task_ble_info
+    task_ble_info = utils.determine_candidate_basic_levels(g=sample_anno_g,
+                                                           annotation_task=annotation_task,
+                                                           users=users,
+                                                           verbose=verbose)
+
+    dot_folder = os.path.join(output_folder, annotation_task)
+    os.mkdir(dot_folder)
+
+    for node, ble_info in task_ble_info.items():
+        png_path = os.path.join(dot_folder, f'{node}.png')
+        utils.create_dot_of_ble_candidate(ble_candidate_info=ble_info,
+                                          ev_coll_obj=ev_coll_obj,
+                                          output_path=png_path,
+                                          verbose=verbose)
+
+    annotation_task_to_ble_info[annotation_task] = task_ble_info
+
+
+node_to_shortest_path_to_event = dict()
+for node in sample_g.nodes():
+    shortest_path = nx.shortest_path(G=sample_g,
+                                     source='Q1656682',
+                                     target=node)
+    node_to_shortest_path_to_event[node] = len(shortest_path)
 
 
 for annotation_task in ANNOTATION_TASKS:
     utils.ble_analysis(candidate_ble_info=annotation_task_to_ble_info,
+                       node_to_depth=node_to_shortest_path_to_event,
                        output_folder=output_folder,
                        verbose=verbose)
-
 

@@ -4,6 +4,8 @@ from collections import Counter, defaultdict
 import pandas as pd
 import networkx as nx
 
+from sklearn.metrics import cohen_kappa_score
+
 ANNOTATION_TASKS = ["participants", "subevents"]
 
 TASK_TO_INDEX = {
@@ -79,7 +81,6 @@ def combine_annotations(users, batches, main_anno_folder, verbose=0):
     edge_to_user_to_task_to_value = dict()
 
     for user in users:
-
         for task in ANNOTATION_TASKS:
             print()
             print(f'working on task {task} for user {user}')
@@ -101,6 +102,35 @@ def combine_annotations(users, batches, main_anno_folder, verbose=0):
     return edge_to_user_to_task_to_value
 
 
+def obtain_kappa_score(output_folder, users, annotation_task):
+    """
+
+    :param output_folder:
+    :param annotation_task:
+    :return:
+    """
+    user_one, user_two = users
+
+    path = os.path.join(output_folder, f'{annotation_task}_{user_one}.json')
+    with open(path) as infile:
+        info_user_one = json.load(infile)
+
+    path = os.path.join(output_folder, f'{annotation_task}_{user_two}.json')
+    with open(path) as infile:
+        info_user_two = json.load(infile)
+
+    assert set(info_user_one) == set(info_user_two)
+
+    labels_user_one = []
+    labels_user_two = []
+    for key in info_user_one:
+        labels_user_one.append(info_user_one[key])
+        labels_user_two.append(info_user_two[key])
+
+    kappa = cohen_kappa_score(y1=labels_user_one, y2=labels_user_two)
+
+    return kappa
+
 def compute_agreement(edge_to_user_to_task_to_value,
                       annotation_task,
                       output_folder,
@@ -111,10 +141,14 @@ def compute_agreement(edge_to_user_to_task_to_value,
     """
     category_to_edges = defaultdict(list)
 
+    filtered_user_to_edge_to_value = defaultdict(dict)
+    num_cat_other = 0
+
     for edge, user_to_task_to_value in edge_to_user_to_task_to_value.items():
 
-        values = [task_to_value[annotation_task]
-                  for user, task_to_value in user_to_task_to_value.items()]
+        user_to_value = {user: task_to_value[annotation_task]
+                         for user, task_to_value in user_to_task_to_value.items()}
+        values = list(user_to_value.values())
 
         if values == ['dk' , 'dk']:
             if verbose >= 2:
@@ -131,7 +165,30 @@ def compute_agreement(edge_to_user_to_task_to_value,
                 for value in values]):
             category = abs(values[0] - values[1]) # we focus on two annotators
 
+        if category == "other":
+            num_cat_other += 1
+            continue
+
         category_to_edges[category].append(edge)
+
+        for user, value in user_to_value.items():
+            edge_string = '---'.join([id_ for id_ in edge])
+            filtered_user_to_edge_to_value[user][edge_string] = value
+
+    num_annotations = []
+    for user, annotations in filtered_user_to_edge_to_value.items():
+        num_annotations.append(len(annotations))
+    assert len(set(num_annotations)) == 1, f'this set should only have one value: {num_annotations}'
+
+    for user, annotations in filtered_user_to_edge_to_value.items():
+        json_path = os.path.join(output_folder, f'{annotation_task}_{user}.json')
+        with open(json_path, 'w') as outfile:
+            json.dump(annotations, outfile)
+
+    if verbose:
+        print()
+        print(f'number of items in category "other": {num_cat_other}')
+        print('i.e., one annotator specified an integer and the other dk or ns')
 
     # create table
     list_of_lists = []
@@ -142,10 +199,24 @@ def compute_agreement(edge_to_user_to_task_to_value,
         list_of_lists.append(one_row)
 
     df = pd.DataFrame(list_of_lists, columns=headers)
+    df = df.sort_values('Delta between annotations')
+
+    # cumulative relative frequency
+    num_items = sum(df['Number of items'])
+    cum_rel_freq_values = []
+    cum_rel_freq = 0
+
+    for index, row in df.iterrows():
+        rel_freq = 100 * (row['Number of items'] / num_items)
+        cum_rel_freq += rel_freq
+        cum_rel_freq_values.append(cum_rel_freq)
+
+    df['Cumulative Rel Freq'] = cum_rel_freq_values
 
     # export table
     excel_path = os.path.join(output_folder, f'agreement_{annotation_task}.xlsx')
     df.to_excel(excel_path, index=False)
+
 
     if verbose >= 1:
         print()
@@ -288,16 +359,20 @@ def determine_candidate_basic_levels(g, annotation_task, users, verbose=0):
             continue
 
         children_avgs = []
+        children_edges_to_value = dict()
         for children_edge in children_edges:
             child_edge_avg = get_average_edge_value(g, children_edge, annotation_task, users, verbose=verbose)
             if child_edge_avg is not None:
                 children_avgs.append(child_edge_avg)
+                children_edges_to_value[children_edge] = child_edge_avg
 
         parent_avgs = []
+        parent_edges_to_value = dict()
         for parent_edge in parent_edges:
             parent_edge_avg = get_average_edge_value(g, parent_edge, annotation_task, users, verbose=verbose)
             if parent_edge_avg is not None:
                 parent_avgs.append(parent_edge_avg)
+                parent_edges_to_value[parent_edge] = parent_edge_avg
 
         if any([not children_avgs,
                 not parent_avgs]):
@@ -308,7 +383,9 @@ def determine_candidate_basic_levels(g, annotation_task, users, verbose=0):
         delta = children_value - parent_value
         result = {
             'children': children_value,
+            'children_edges_to_value' : children_edges_to_value,
             'parents': parent_value,
+            'parents_edges_to_value' : parent_edges_to_value,
             'delta' : delta
         }
 
@@ -331,6 +408,7 @@ def determine_candidate_basic_levels(g, annotation_task, users, verbose=0):
 
 
 def ble_analysis(candidate_ble_info,
+                 node_to_depth,
                  output_folder,
                  verbose=0):
     """
@@ -340,13 +418,16 @@ def ble_analysis(candidate_ble_info,
     :param output_folder:
     """
     list_of_lists = []
-    headers = ['Node ID', 'Delta subevents', 'Delta participants']
+    headers = ['Node ID', 'Node Depth', 'Delta subevents', 'Delta participants']
 
     for node in candidate_ble_info['subevents']: # ugly hack to get iterable of relevant nodes
 
+        delta_subevents = candidate_ble_info['subevents'][node]['delta']
+        delta_participants = candidate_ble_info['participants'][node]['delta']
         one_row = [node,
-                   candidate_ble_info['subevents'][node]['delta'],
-                   candidate_ble_info['participants'][node]['delta'],
+                   node_to_depth[node],
+                   round(delta_subevents, 1),
+                   round(delta_participants, 1),
                    ]
         list_of_lists.append(one_row)
 
@@ -365,5 +446,52 @@ def ble_analysis(candidate_ble_info,
         print('saved BLE delta table to')
         print(excel_path)
         print(tex_path)
+
+
+def create_dot_of_ble_candidate(ble_candidate_info,
+                                ev_coll_obj,
+                                output_path=None,
+                                verbose=0):
+    """
+
+    :param dict ble_candidate_info: see output determine_candidate_basic_levels
+    {'children': 5.25,
+      'children_edges_to_value': {('Q3270632', 'Q4582333'): 6.5,
+       ('Q3270632', 'Q1152547'): 4.0},
+      'parents': 5.5,
+      'parents_edges_to_value': {('Q18608583', 'Q3270632'): 4.5,
+       ('Q1079023', 'Q3270632'): 6.5},
+      'delta': -0.25}}
+    """
+
+    g = nx.DiGraph()
+
+    keys = ['children_edges_to_value',
+            'parents_edges_to_value']
+
+    nodes = set()
+    for key in keys:
+        for (u, v) in ble_candidate_info[key]:
+            nodes.update((u, v))
+
+    for node in nodes:
+        uri = f'http://www.wikidata.org/entity/{node}'
+        ev_obj = ev_coll_obj.event_type_id_to_event_type_obj[uri]
+        g.add_node(node, label=ev_obj.label_to_show)
+
+    for key in keys:
+        edges = ble_candidate_info[key]
+        for (u, v), weight in edges.items():
+            g.add_edge(u, v, label=weight)
+
+    if output_path is not None:
+        p = nx.drawing.nx_pydot.to_pydot(g)
+        p.write_png(output_path)
+
+        if verbose >= 3:
+            print()
+            print(f'written output to {output_path}')
+
+
 
 
