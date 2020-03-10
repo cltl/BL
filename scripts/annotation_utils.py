@@ -3,6 +3,7 @@ import json
 from collections import Counter, defaultdict
 import pandas as pd
 import networkx as nx
+import statistics
 
 from sklearn.metrics import cohen_kappa_score
 
@@ -446,6 +447,49 @@ def ble_analysis(candidate_ble_info,
         print('saved BLE delta table to')
         print(excel_path)
         print(tex_path)
+
+    return df
+
+
+def analyze_df(df,
+               turning_point,
+               annotation_task,
+               verbose=0):
+    """
+
+    :param df:
+    :return:
+    """
+
+    low = []
+    high = []
+
+    for index, row in df.iterrows():
+
+        task_value = row[f'Delta {annotation_task}']
+        depth = row['Node Depth']
+
+        if task_value >= turning_point:
+            high.append(depth)
+        else:
+            low.append(depth)
+
+    high_avg_depth = statistics.mean(high)
+    low_avg_depth = statistics.mean(low)
+
+    if verbose >= 1:
+        print()
+        print('turning point', turning_point)
+        print('on or above turning point', len(high))
+        print('below turning point', len(low))
+        print('average depth')
+        print('high', round(high_avg_depth,2))
+        print('low', round(low_avg_depth,2))
+        print('high distribution', sorted(Counter(high).items()))
+        print('high standard deviation', statistics.stdev(high))
+        print('low distribution', sorted(Counter(low).items()))
+        print('low standard deviation', statistics.stdev(low))
+
 
 
 def create_dot_of_ble_candidate(ble_candidate_info,

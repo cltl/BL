@@ -48,6 +48,7 @@ import annotation_utils as utils
 
 ANNOTATION_TASKS = ["participants", "subevents"]
 MAX_DELTA_BETWEEN_ANNOTATIONS = 1
+TURNING_POINT = 3
 
 # load arguments
 arguments = docopt(__doc__)
@@ -135,9 +136,20 @@ for node in sample_g.nodes():
     node_to_shortest_path_to_event[node] = len(shortest_path)
 
 
+
 for annotation_task in ANNOTATION_TASKS:
-    utils.ble_analysis(candidate_ble_info=annotation_task_to_ble_info,
-                       node_to_depth=node_to_shortest_path_to_event,
-                       output_folder=output_folder,
-                       verbose=verbose)
+
+    if verbose >= 1:
+        print()
+        print(f'annotation task: {annotation_task}')
+
+    df = utils.ble_analysis(candidate_ble_info=annotation_task_to_ble_info,
+                            node_to_depth=node_to_shortest_path_to_event,
+                            output_folder=output_folder,
+                            verbose=verbose)
+
+    utils.analyze_df(df=df,
+                     turning_point=TURNING_POINT,
+                     annotation_task=annotation_task,
+                     verbose=verbose)
 
