@@ -40,6 +40,7 @@ import os
 import shutil
 import sys
 import pickle
+import json
 sys.path.append('../')
 
 import networkx as nx
@@ -153,3 +154,14 @@ for annotation_task in ANNOTATION_TASKS:
                      annotation_task=annotation_task,
                      verbose=verbose)
 
+
+for annotation_task in ANNOTATION_TASKS:
+    piek_json = json.load(open(os.path.join(output_folder,
+                                            f'{annotation_task}_Piek.json')))
+    antske_json =  json.load(open(os.path.join(output_folder,
+                                               f'{annotation_task}_Antske.json')))
+    output_path = os.path.join(output_folder, f'heatmap_{annotation_task}.png')
+    df, ax = utils.create_heatmap(piek_json,
+                                  antske_json,
+                                  output_path,
+                                  verbose=1)

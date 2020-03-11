@@ -4,8 +4,13 @@ from collections import Counter, defaultdict
 import pandas as pd
 import networkx as nx
 import statistics
+import math
 
 from sklearn.metrics import cohen_kappa_score
+
+import seaborn as sns
+import pandas
+import matplotlib.pyplot as plt
 
 ANNOTATION_TASKS = ["participants", "subevents"]
 
@@ -537,5 +542,59 @@ def create_dot_of_ble_candidate(ble_candidate_info,
             print(f'written output to {output_path}')
 
 
+def create_heatmap(piek_json,
+                   antske_json,
+                   output_path=None,
+                   verbose=0):
+    """
+    """
+    # initialize dataframe
+    likert_values = [1, 2, 3, 4, 5, 6, 7]
+    df = pandas.DataFrame()
+
+    default_values = [None for _ in range(len(likert_values))]
+    for likert_value in likert_values:
+        df[likert_value] = default_values
+
+    piek_antske_to_items = defaultdict(list)
+    keys = list(piek_json.keys())
+    assert piek_json.keys() == antske_json.keys()
+
+    for key in keys:
+        piek_value = piek_json[key]
+        antske_value = antske_json[key]
+        piek_antske_to_items[(piek_value, antske_value)].append(key)
+
+    for (piek, antske), items in piek_antske_to_items.items():
+        num_items = len(items)
+        df.set_value(piek, antske, len(items))
+        if verbose >= 2:
+            print(piek, antske, len(items))
+
+    for index, row in df.iterrows():
+        for column_name, value in row.items():
+            to_change = False
+
+            if value is None:
+                value = 0
+                to_change = True
+            elif math.isnan(value):
+                value = 0
+                to_change = True
+
+            if to_change:
+                df.set_value(index, column_name, value)
+
+    df = df[df.columns].astype(int)
+
+    df = df.drop(df.index[0])
+    f, ax = plt.subplots(figsize=(9, 6))
+    plot = sns.heatmap(df, annot=True, fmt="d", linewidths=.5, ax=ax)
+    ax.invert_yaxis()
+
+    if output_path is not None:
+        plot.figure.savefig(output_path)
+
+    return df, ax
 
 
