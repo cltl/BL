@@ -562,6 +562,54 @@ class EventTypeCollection:
 
         return g
 
+    def get_subsumers_of_set_of_event_types(self,
+                                            event_types,
+                                            wd_prefix='http://www.wikidata.org/entity/',
+                                            output_path=None,
+                                            verbose=0):
+        """
+
+        :param set event_types: a set of event types URIs,
+        e.g., {'Q47566', 'Q858439'} etc.
+        :param output_path: if output_path is provided,
+        then a txt file will be written to disk.
+        one line for each event type
+
+        :rtype: set
+        :return: set of event types
+        """
+        if verbose >= 2:
+            print()
+            print(f'detected {len(event_types)} event types')
+
+        all_event_types = set()
+
+        for event_type in event_types:
+            full_uri = f'{wd_prefix}{event_type}'
+            ev_obj = self.event_type_id_to_event_type_obj.get(full_uri, None)
+
+            if ev_obj is None:
+                if verbose >= 2:
+                    print(f'{event_type} not in Wikidata representation')
+                continue
+
+            all_event_types.add(event_type)
+            all_event_types.update(ev_obj.subsumers)
+
+            if verbose >= 4:
+                print(f'{event_type}: {len(ev_obj.subsumers) + 1} subsumers')
+
+        if verbose >= 2:
+            print(f'detected {len(all_event_types)} event types')
+
+        if output_path:
+            with open(output_path, 'w') as outfile:
+                for event_type in all_event_types:
+                    outfile.write(f'{event_type}\n')
+            if verbose >= 2:
+                print(f'written txt to {output_path}')
+
+        return all_event_types
 
     def create_d3_tree(self,
                        root,
