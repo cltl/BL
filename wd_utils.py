@@ -72,7 +72,7 @@ QUERIES = {
 
 WDT_SPARQL_URL = 'https://query.wikidata.org/sparql'
 BATCH_SIZE = 250 # at 500 the api calls do not work anymore
-DEV_LIMIT = 10000 # how many items do you want to have when you put verbose to 4 or higher
+DEV_LIMIT = 100000 # how many items do you want to have when you put verbose to 4 or higher
 NUM_RETRIES = 5 # after how many retries do you give up
 LOG_BATCHES = False # if True, send information about each batch to stdout
 OVERWRITE = True # if True, overwrite existing results
@@ -539,6 +539,6 @@ def run_queries(output_folder, verbose=0):
 if __name__ == '__main__':
 
     output_folder = 'wd_cache'
-    verbose = 4
+    verbose = 2
 
     run_queries(output_folder, verbose=verbose)
