@@ -1,4 +1,14 @@
 {
+  "paths" : {
+    "wd_representation_base" : "../wd_cache/ev_type_coll.p",
+    "wd_representation_with_mwep" : "../wd_cache/ev_type_coll_updated.p",
+    "bin_folder" : "/home/postma/multilingual-wiki-event-pipeline/bin",
+    "mwep_folder" : "/home/postma/multilingual-wiki-event-pipeline",
+    "mwep_wiki_output" : "/home/postma/multilingual-wiki-event-pipeline/wiki_output",
+    "wd_wiki_output" : "../wiki_output",
+    "event_types_txt" : "../wd_cache/event_types.txt"
+  },
+  "languages" : ["nl", "en", "it"],
   "event_types" : [
     "Q13219666",
     "Q1079023",
