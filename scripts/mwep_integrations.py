@@ -42,7 +42,7 @@ mwep_wiki_output=settings['paths']['mwep_wiki_output']
 wd_wiki_output=settings['paths']['wd_wiki_output']
 path_event_types_txt=settings['paths']['event_types_txt']
 
-languages = ",".join(sorted(settings['languages']))
+languages = ",".join(sorted(settings['mwep']['languages']))
 
 with open(path_event_types_txt) as infile:
     for line in infile:
@@ -52,11 +52,13 @@ with open(path_event_types_txt) as infile:
             f'--path_ev_type_coll="{updated}"',
             f'--outpath_ev_type_coll="{updated}"',
             f'--path_mwep_repo="{mwep_folder}"',
-            f'--path_inc_coll_obj ="{bin_folder}/{evtype}_{languages}.bin',
-            f'--path_mwep_wiki_output={mwep_wiki_output}',
-            f'--path_wd_wiki_output={wd_wiki_output}',
+            f'--path_inc_coll_obj="{bin_folder}/{evtype}_{languages}.bin"',
+            f'--path_mwep_wiki_output="{mwep_wiki_output}"',
+            f'--path_wd_wiki_output="{wd_wiki_output}"',
             '--verbose=3'
         ]
         command = ' '.join(subcommands)
+        print()
+        print(command)
         result = subprocess.check_output(command, shell=True)
         print(result)
