@@ -35,11 +35,16 @@ if os.path.exists(updated):
     os.remove(updated)
 shutil.copy(base, updated)
 
+for attr in ['data_releases_folder',
+             'data_release_folder']:
+    if not os.path.exists(settings['paths'][attr]):
+        os.mkdir(settings['paths'][attr])
+
 # folder where bin files are stored (output from MWEP)
 bin_folder=settings['paths']['bin_folder']
 mwep_folder=settings['paths']['mwep_folder']
 mwep_wiki_output=settings['paths']['mwep_wiki_output']
-wd_wiki_output=settings['paths']['wd_wiki_output']
+wd_wiki_output=settings['paths']['data_release_naf_folder']
 path_event_types_txt=settings['paths']['event_types_txt']
 
 languages = ",".join(sorted(settings['mwep']['languages']))

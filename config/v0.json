@@ -6,33 +6,23 @@
     "mwep_folder" : "/home/postma/multilingual-wiki-event-pipeline",
     "mwep_wiki_output" : "/home/postma/multilingual-wiki-event-pipeline/wiki_output",
     "wd_wiki_output" : "../wiki_output",
-    "event_types_txt" : "../wd_cache/event_types.txt"
+    "event_types_txt" : "../wd_cache/event_types.txt",
+    "mwep_settings" : "../config/mwep_settings.json",
+    "data_releases_folder" : "../data_releases",
+    "data_release_folder" : "../data_releases/v1",
+    "data_release_naf_folder" : "../data_releases/v1/naf",
+    "data_release_json_folder" : "../data_releases/v1/json"
   },
-  "languages" : ["nl", "en", "it"],
+  "mwep" : {
+    "languages": [
+      "nl",
+      "en",
+      "it"
+    ],
+    "project": "v0",
+    "wikipedia_sources" : false
+  },
   "event_types" : [
-    "Q13219666",
-    "Q1079023",
-    "Q2912397",
-    "Q132241",
-    "Q15966540",
-    "Q1318941",
-    "Q2618461",
-    "Q645883",
-    "Q858439",
-    "Q24050099",
-    "Q18131152",
-    "Q2627975",
-    "Q1478437",
-    "Q15061650",
-    "Q126701",
-    "Q21156425",
-    "Q1445650",
-    "Q11483816",
-    "Q40244",
-    "Q56321344",
-    "Q22231110",
-    "Q22231111",
-    "Q93288",
-    "Q167170",
-    "Q20107484"]
+    "Q14006248",
+    "Q7241485"]
 }
