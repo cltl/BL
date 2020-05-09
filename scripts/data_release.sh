@@ -11,7 +11,8 @@ python mwep_integrations.py --path_config_json="../config/v0.json" --verbose="2"
 # TODO: integrate structured data
 python integrate_structured_data.py --path_config_json="../config/v0.json" --verbose="2"
 
-# TODO: add lexicon data
+# add lexicon data
+python add_lexicon_data.py --path_config_json="../config/v0.json" --verbose="2"
 
 # TODO: add SEM representation
 

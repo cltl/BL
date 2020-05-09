@@ -2,10 +2,14 @@
 
 
 
-rm -rf resources
-mkdir resources
+rm -rf res
+mkdir res
 
-cd resources
-git clone https://github.com/cltl/multilingual-wiki-event-pipeline
-cd multilingual-wiki-event-pipeline
-python -c "import utils;utils.load_ontology_as_directed_graph('ontology', 'wd:Q1656682', verbose=2)"
+cd res
+git clone https://github.com/cltl/Dutch_FrameNet_Lexicon
+cd Dutch_FrameNet_Lexicon
+pip install -r requirements.txt
+bash install.sh
+cd bash_scripts
+bash represent_using_FrameNet_class.sh
+bash lexicon_data_for_tool.sh
