@@ -428,6 +428,62 @@ class EventTypeCollection:
         for ev_type, ev_type_obj in self.event_type_id_to_event_type_obj.items():
             ev_type_obj.set_cue_validities(self.prop_to_freq)
 
+    def create_json_files(self,
+                          main_event_types,
+                          json_dir,
+                          project,
+                          wd_prefix='http://www.wikidata.org/entity/',
+                          verbose=0):
+        """
+
+        :param iterable main_event_types: set of event types
+        :return:
+        """
+        specific_to_main_event_type = self.get_subsumers_of_set_of_event_types(main_event_types)
+        inc2doc_file = '%s/inc2doc_index.json' % json_dir
+        inc2str_file = '%s/inc2str_index.json' % json_dir
+        proj2inc_file = '%s/proj2inc_index.json' % json_dir
+        type2inc_file = '%s/type2inc_index.json' % json_dir
+
+        inc2doc = {}
+        inc2str = {}
+        proj2inc = defaultdict(set)
+        type2inc = defaultdict(set)
+
+        for specific_event_type, main_event_type in specific_to_main_event_type.items():
+            full_uri = f'{wd_prefix}{specific_to_main_event_type}'
+            ev_obj = self.event_type_id_to_event_type_obj.get(full_uri, None)
+            for inc in ev_obj.incidents:
+                str_data = {}
+                for k, v in inc.extra_info.items():
+                    str_data[k] = list(v)
+
+                rts = []
+                for rt in inc.reference_texts:
+                    rt_info = '%s/%s' % (rt.language, rt.name)
+                    rts.append(rt_info)
+                key = inc.wdt_id
+                inc2doc[key] = rts
+                inc2str[key] = str_data
+                proj2inc[project].add(key)
+                type2inc[main_event_type].add(specific_event_type)
+
+        new_t2i = {}
+        for k, v in type2inc.items():
+            new_t2i[k] = sorted(list(v))
+        new_p2i = {}
+        for k, v in proj2inc.items():
+            new_p2i[k] = sorted(list(v))
+
+        with open(inc2doc_file, 'w') as f:
+            json.dump(inc2doc, f)
+        with open(inc2str_file, 'w') as f:
+            json.dump(inc2str, f)
+        with open(proj2inc_file, 'w') as f:
+            json.dump(new_p2i, f)
+        with open(type2inc_file, 'w') as f:
+            json.dump(new_t2i, f)
+
     def create_directed_graph(self,
                               path_subclass_of_rels,
                               root_node_id,
@@ -583,6 +639,7 @@ class EventTypeCollection:
             print(f'detected {len(event_types)} event types')
 
         all_event_types = set()
+        specific_to_main_event_type = {}
 
         for event_type in event_types:
             full_uri = f'{wd_prefix}{event_type}'
@@ -594,7 +651,11 @@ class EventTypeCollection:
                 continue
 
             all_event_types.add(event_type)
+            specific_to_main_event_type[event_type].add(event_type)
             all_event_types.update(ev_obj.subsumers)
+
+            for subsumer in ev_obj.subsumers:
+                specific_to_main_event_type[subsumer] = event_type
 
             if verbose >= 4:
                 print(f'{event_type}: {len(ev_obj.subsumers) + 1} subsumers')
@@ -609,7 +670,7 @@ class EventTypeCollection:
             if verbose >= 2:
                 print(f'written txt to {output_path}')
 
-        return all_event_types
+        return specific_to_main_event_type
 
     def create_d3_tree(self,
                        root,
