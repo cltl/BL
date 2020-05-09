@@ -15,6 +15,7 @@ Example:
 """
 from docopt import docopt
 import json
+from shutil import rmtree
 import os
 import subprocess
 import shutil
@@ -34,6 +35,10 @@ updated=settings['paths']['wd_representation_with_mwep']
 if os.path.exists(updated):
     os.remove(updated)
 shutil.copy(base, updated)
+
+# remove and create data_release_folder
+if os.path.exists(settings['paths']['data_release_folder']):
+    rmtree(settings['paths']['data_release_folder'])
 
 for attr in ['data_releases_folder',
              'data_release_folder']:

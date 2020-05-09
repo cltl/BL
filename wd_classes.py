@@ -440,6 +440,9 @@ class EventTypeCollection:
         :return:
         """
         specific_to_main_event_type = self.get_subsumers_of_set_of_event_types(main_event_types)
+
+        os.mkdir(json_dir)
+
         inc2doc_file = '%s/inc2doc_index.json' % json_dir
         inc2str_file = '%s/inc2str_index.json' % json_dir
         proj2inc_file = '%s/proj2inc_index.json' % json_dir
@@ -451,18 +454,22 @@ class EventTypeCollection:
         type2inc = defaultdict(set)
 
         for specific_event_type, main_event_type in specific_to_main_event_type.items():
-            full_uri = f'{wd_prefix}{specific_to_main_event_type}'
+            full_uri = f'{wd_prefix}{specific_event_type}'
             ev_obj = self.event_type_id_to_event_type_obj.get(full_uri, None)
+
+            if ev_obj is None:
+                continue 
+
             for inc in ev_obj.incidents:
                 str_data = {}
                 for k, v in inc.extra_info.items():
                     str_data[k] = list(v)
 
                 rts = []
-                for rt in inc.reference_texts:
-                    rt_info = '%s/%s' % (rt.language, rt.name)
+                for rt in inc.reference_texts.values():
+                    rt_info = '%s/%s' % (rt.language, rt.title)
                     rts.append(rt_info)
-                key = inc.wdt_id
+                key = inc.title_id
                 inc2doc[key] = rts
                 inc2str[key] = str_data
                 proj2inc[project].add(key)
@@ -651,7 +658,7 @@ class EventTypeCollection:
                 continue
 
             all_event_types.add(event_type)
-            specific_to_main_event_type[event_type].add(event_type)
+            specific_to_main_event_type[event_type] = event_type
             all_event_types.update(ev_obj.subsumers)
 
             for subsumer in ev_obj.subsumers:
