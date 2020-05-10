@@ -5,6 +5,7 @@ from collections import defaultdict
 import os
 import shutil
 
+from lxml import etree
 import networkx as nx
 import graphviz as gv
 from rdflib import Graph
@@ -165,7 +166,6 @@ class EventTypeCollection:
 
                 new_ref_text_obj = ReferenceText(title=mwep_ref_text_obj.name,
                                                  language=mwep_ref_text_obj.language,
-                                                 category='secondary' # TODO: update when using primary reference texts
                                                  )
 
                 # store on disk
@@ -836,6 +836,7 @@ class EventTypeCollection:
 
     def serialize(self,
                   event_types,
+                  unstructured_folder,
                   wd_prefix='http://www.wikidata.org/entity/',
                   filename=None):
         """
@@ -848,7 +849,8 @@ class EventTypeCollection:
             ],
             "sem:hasTimeStamp": [
                 "wdt:P585"
-            ]
+            ],
+            "sem:hasActor" : []
         }
 
         specific_to_main_event_type = self.get_subsumers_of_set_of_event_types(event_types)
@@ -857,12 +859,11 @@ class EventTypeCollection:
 
         # Namespaces definition
         SEM=Namespace('http://semanticweb.cs.vu.nl/2009/11/sem/')
-        WDT_ONT=Namespace('http://www.wikidata.org/wiki/')
+        #WDT_ONT=Namespace('http://www.wikidata.org/wiki/')
         GRASP=Namespace('http://groundedannotationframework.org/grasp#')
         DCT=Namespace('http://purl.org/dc/elements/1.1/')
-        PREMON=Namespace('https://premon.fbk.eu/resource/')
         g.bind('sem', SEM)
-        g.bind('wdt', WDT_ONT)
+        #g.bind('wdt', WDT_ONT)
         g.bind('grasp', GRASP)
         g.bind('dct', DCT)
 
@@ -876,7 +877,7 @@ class EventTypeCollection:
 
             main_type_uri = URIRef(main_full_uri)
             for lang, label in main_ev_obj.title_labels.items():
-                main_type_literal = Literal(label)
+                main_type_literal = Literal(label, lang=lang)
                 g.add((main_type_uri, RDFS.label, main_type_literal))
 
         for specific_type, main_type in specific_to_main_event_type.items():
@@ -895,21 +896,22 @@ class EventTypeCollection:
             if main_ev_obj is None:
                 continue
 
-            inc_type_uri = URIRef(main_full_uri)
+            main_type_uriref = URIRef(main_full_uri)
 
             for incident in spec_ev_obj.incidents:
                 event_id = URIRef(specific_full_uri)
 
                 # event labels in all languages
-                for ref_text in incident.reference_texts:
+                for ref_text in incident.reference_texts.values():
+                    content = ref_text.get_content(unstructured_folder)
                     name_in_lang=Literal(ref_text.title, lang=ref_text.language)
                     g.add((event_id, RDFS.label, name_in_lang))
 
                     # denotation of the event
                     wikipedia_article=URIRef(ref_text.uri)
                     g.add((event_id, GRASP.denotedIn, wikipedia_article ))
-                    g.add((wikipedia_article, DCT.description, Literal(ref_text.content) ))
-                    g.add((wikipedia_article, DCT.title, Literal(ref_text.name) ))
+                    g.add((wikipedia_article, DCT.description, Literal(content) ))
+                    g.add((wikipedia_article, DCT.title, Literal(ref_text.title) ))
                     g.add((wikipedia_article, DCT.language, Literal(ref_text.language) ))
                     g.add((wikipedia_article, DCT.type, URIRef('http://purl.org/dc/dcmitype/Text') ))
 
@@ -917,25 +919,25 @@ class EventTypeCollection:
                 g.add((event_id, RDF.type, SEM.Event) )
                 g.add((event_id, SEM.eventType, inc_type_uri))
 
-            # Map all roles to FN roles
-            for predicate, wdt_prop_paths in wdt_pred_to_pid.items():
-                if predicate in incident.extra_info.keys():
+                # Map all roles to FN roles
+                for predicate, wdt_prop_paths in wdt_pred_to_pid.items():
+                    if predicate in incident.extra_info.keys():
 
-                    vals=incident.extra_info[predicate]
-                    prefix, pid=predicate.split(':')
+                        vals=incident.extra_info[predicate]
+                        prefix, pid=predicate.split(':')
 
-                    RES=SEM
-                    for v in vals:
-                        v=(v.split('|')[0]).strip()
-                        if pid not in {'hasTimeStamp', 'time'}:
-                            an_obj=URIRef(v)
-                        else:
-                            if v.endswith('-01-01T00:00:00Z'):
-                                vyear=v[:4]
-                                an_obj=Literal(vyear, datatype=XSD.gYear)
+                        RES=SEM
+                        for v in vals:
+                            v=(v.split('|')[0]).strip()
+                            if pid not in {'hasTimeStamp', 'time'}:
+                                an_obj=URIRef(v)
                             else:
-                                an_obj=Literal(v,datatype=XSD.date)
-                        g.add((event_id, RES[pid], an_obj))
+                                if v.endswith('-01-01T00:00:00Z'):
+                                    vyear=v[:4]
+                                    an_obj=Literal(vyear, datatype=XSD.gYear)
+                                else:
+                                    an_obj=Literal(v,datatype=XSD.date)
+                            g.add((event_id, RES[pid], an_obj))
 
 
         # Done. Store the resulting .ttl file now...
@@ -1154,12 +1156,11 @@ class ReferenceText:
     """
     def __init__(self,
                  title,
-                 language,
-                 category):
+                 language):
         self.title = title # title of the reference text
         self.language = language # the language the article is written in
-        self.category = category # primary | secondary
         self.title_id = (self.language, self.title)
+        self.uri = f"https://{language}.wikipedia.org/wiki/{self.title.replace(' ', '_')}"
 
 
     def __str__(self):
@@ -1167,17 +1168,25 @@ class ReferenceText:
 
         attrs = ['title',
                  'language',
-                 'category']
+                 'category',
+                 'uri']
         for attr in attrs:
             info.append(f'ATTR {attr} has value: {getattr(self, attr)}')
 
         return '\n'.join(info)
 
-    def get_naf_path_of_reference_text(self, wiki_output_folder):
+    def get_content(self, unstructured_folder):
+        naf_path = self.get_naf_path_of_reference_text(unstructured_folder)
+        doc = etree.parse(naf_path)
+        raw_el = doc.find('raw')
+        content = raw_el.text
+        return content
+
+    def get_naf_path_of_reference_text(self, unstructured_folder):
         """
         The NAF representations of the ReferenceTexts are stored in a folder, which is organized
         in the following way:
-        wiki_output_folder:
+        unstructured:
             language1
                 title.naf
                 title.naf
@@ -1191,7 +1200,7 @@ class ReferenceText:
         :rtype: str
         :return: the path to the NAF file
         """
-        naf_path = os.path.join(wiki_output_folder,
+        naf_path = os.path.join(unstructured_folder,
                                 self.language,
                                 f'{self.title}.naf')
 

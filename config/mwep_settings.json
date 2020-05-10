@@ -1,7 +1,7 @@
 {
   "processing" : {
     "must_have_all_languages" : false,
-    "must_have_english" : false,
+    "must_have_english" : true,
     "one_page_per_language" : false
   },
   "newsplease" : {

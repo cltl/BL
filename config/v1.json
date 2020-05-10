@@ -10,9 +10,10 @@
     "mwep_settings" : "../config/mwep_settings.json",
     "data_releases_folder" : "../data_releases",
     "data_release_folder" : "../data_releases/v1",
-    "data_release_naf_folder" : "../data_releases/v1/naf",
-    "data_release_json_folder" : "../data_releases/v1/json",
-    "data_release_frames_folder" : "../data_releases/v1/frames",
+    "data_release_naf_folder" : "../data_releases/v1/unstructured",
+    "data_release_json_folder" : "../data_releases/v1/structured",
+    "data_release_rdf_folder" : "../data_releases/v1/rdf",
+    "data_release_frames_folder" : "../data_releases/v1/lexical_resources",
     "lexicon_data" : "../res/Dutch_FrameNet_Lexicon/output/lexicon_data_for_frame_annotation_tool"
   },
   "mwep" : {
@@ -21,7 +22,7 @@
       "en",
       "it"
     ],
-    "project": "v0",
+    "project": "v1",
     "wikipedia_sources" : false
   },
   "event_types" : [
