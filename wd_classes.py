@@ -7,6 +7,10 @@ import shutil
 
 import networkx as nx
 import graphviz as gv
+from rdflib import Graph
+from rdflib import URIRef, Literal, XSD
+from rdflib.namespace import Namespace
+from rdflib.namespace import RDF, RDFS
 
 from graph_utils import get_leaf_nodes
 from wd_utils import from_short_uri_to_full_uri
@@ -829,6 +833,116 @@ class EventTypeCollection:
         stats['num_unique_properties'] = len(self.prop_to_freq)
 
         return stats
+
+    def serialize(self,
+                  event_types,
+                  wd_prefix='http://www.wikidata.org/entity/',
+                  filename=None):
+        """
+        Serialize a collection of incidents to a .ttl file.
+        """
+
+        wdt_pred_to_pid = {
+            "sem:hasPlace": [
+                "wdt:P17"
+            ],
+            "sem:hasTimeStamp": [
+                "wdt:P585"
+            ]
+        }
+
+        specific_to_main_event_type = self.get_subsumers_of_set_of_event_types(event_types)
+
+        g = Graph()
+
+        # Namespaces definition
+        SEM=Namespace('http://semanticweb.cs.vu.nl/2009/11/sem/')
+        WDT_ONT=Namespace('http://www.wikidata.org/wiki/')
+        GRASP=Namespace('http://groundedannotationframework.org/grasp#')
+        DCT=Namespace('http://purl.org/dc/elements/1.1/')
+        PREMON=Namespace('https://premon.fbk.eu/resource/')
+        g.bind('sem', SEM)
+        g.bind('wdt', WDT_ONT)
+        g.bind('grasp', GRASP)
+        g.bind('dct', DCT)
+
+        # add literals of the main event types
+        for event_type in event_types:
+            main_full_uri = f'{wd_prefix}{event_type}'
+            main_ev_obj = self.event_type_id_to_event_type_obj.get(main_full_uri, None)
+
+            if main_ev_obj is None:
+                continue
+
+            main_type_uri = URIRef(main_full_uri)
+            for lang, label in main_ev_obj.title_labels.items():
+                main_type_literal = Literal(label)
+                g.add((main_type_uri, RDFS.label, main_type_literal))
+
+        for specific_type, main_type in specific_to_main_event_type.items():
+
+            # retrieve EventType of specific event type
+            specific_full_uri = f'{wd_prefix}{specific_type}'
+            spec_ev_obj = self.event_type_id_to_event_type_obj.get(specific_full_uri, None)
+
+            if spec_ev_obj is None:
+                continue
+
+            # retrieve EventType of main event type
+            main_full_uri = f'{wd_prefix}{main_type}'
+            main_ev_obj = self.event_type_id_to_event_type_obj.get(main_full_uri, None)
+
+            if main_ev_obj is None:
+                continue
+
+            inc_type_uri = URIRef(main_full_uri)
+
+            for incident in spec_ev_obj.incidents:
+                event_id = URIRef(specific_full_uri)
+
+                # event labels in all languages
+                for ref_text in incident.reference_texts:
+                    name_in_lang=Literal(ref_text.title, lang=ref_text.language)
+                    g.add((event_id, RDFS.label, name_in_lang))
+
+                    # denotation of the event
+                    wikipedia_article=URIRef(ref_text.uri)
+                    g.add((event_id, GRASP.denotedIn, wikipedia_article ))
+                    g.add((wikipedia_article, DCT.description, Literal(ref_text.content) ))
+                    g.add((wikipedia_article, DCT.title, Literal(ref_text.name) ))
+                    g.add((wikipedia_article, DCT.language, Literal(ref_text.language) ))
+                    g.add((wikipedia_article, DCT.type, URIRef('http://purl.org/dc/dcmitype/Text') ))
+
+                # event type information
+                g.add((event_id, RDF.type, SEM.Event) )
+                g.add((event_id, SEM.eventType, inc_type_uri))
+
+            # Map all roles to FN roles
+            for predicate, wdt_prop_paths in wdt_pred_to_pid.items():
+                if predicate in incident.extra_info.keys():
+
+                    vals=incident.extra_info[predicate]
+                    prefix, pid=predicate.split(':')
+
+                    RES=SEM
+                    for v in vals:
+                        v=(v.split('|')[0]).strip()
+                        if pid not in {'hasTimeStamp', 'time'}:
+                            an_obj=URIRef(v)
+                        else:
+                            if v.endswith('-01-01T00:00:00Z'):
+                                vyear=v[:4]
+                                an_obj=Literal(vyear, datatype=XSD.gYear)
+                            else:
+                                an_obj=Literal(v,datatype=XSD.date)
+                        g.add((event_id, RES[pid], an_obj))
+
+
+        # Done. Store the resulting .ttl file now...
+        if filename: # if a filename was supplied, store it there
+            g.serialize(format='turtle', destination=filename)
+        else: # else print to the console
+            print(g.serialize(format='turtle'))
 
     def pickle_it(self, output_path):
         with open(output_path, 'wb') as outfile:
