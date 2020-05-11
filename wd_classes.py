@@ -899,7 +899,7 @@ class EventTypeCollection:
             main_type_uriref = URIRef(main_full_uri)
 
             for incident in spec_ev_obj.incidents:
-                event_id = URIRef(specific_full_uri)
+                event_id = URIRef(incident.full_uri)
 
                 # event labels in all languages
                 for ref_text in incident.reference_texts.values():
@@ -917,9 +917,9 @@ class EventTypeCollection:
 
                 # event type information
                 g.add((event_id, RDF.type, SEM.Event) )
-                g.add((event_id, SEM.eventType, inc_type_uri))
+                g.add((event_id, SEM.eventType, main_type_uriref))
 
-                # Map all roles to FN roles
+                # Structured data
                 for predicate, wdt_prop_paths in wdt_pred_to_pid.items():
                     if predicate in incident.extra_info.keys():
 
