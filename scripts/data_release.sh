@@ -19,7 +19,8 @@ python convert_to_sem.py --path_config_json="../config/v1.json" --verbose="2"
 
 # TODO: add JSON version
 
-# TODO: add descriptive statistics
+# add descriptive statistics
+python write_stats.py --path_config_json="../config/v1.json" --verbose="2"
 
 # TODO: add README, LICENSE
 

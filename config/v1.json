@@ -14,6 +14,7 @@
     "data_release_json_folder" : "../data_releases/v1/structured",
     "data_release_rdf_folder" : "../data_releases/v1/rdf",
     "data_release_frames_folder" : "../data_releases/v1/lexical_resources",
+    "data_release_stats_folder" : "../data_releases/v1/statistics",
     "lexicon_data" : "../res/Dutch_FrameNet_Lexicon/output/lexicon_data_for_frame_annotation_tool"
   },
   "mwep" : {

@@ -16,6 +16,9 @@ Example:
 from docopt import docopt
 import json
 import pickle
+import sys
+
+sys.path.append('../')
 
 # load arguments
 arguments = docopt(__doc__)
