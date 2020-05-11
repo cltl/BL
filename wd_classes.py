@@ -5,6 +5,7 @@ from collections import defaultdict
 import os
 import shutil
 
+import pandas as pd
 from lxml import etree
 import networkx as nx
 import graphviz as gv
@@ -16,6 +17,119 @@ from rdflib.namespace import RDF, RDFS
 from graph_utils import get_leaf_nodes
 from wd_utils import from_short_uri_to_full_uri
 from stats_utils import show_top_n, get_sample
+
+
+def get_event_type_df(event_type_objs):
+    """
+
+    :param wd_classes.EventType event_type_objs:
+    :return:
+    """
+    headers = ['Event type', '# of incidents']
+    lists_of_lists = []
+
+    for event_type_obj in event_type_objs:
+        event_label = f'{event_type_obj.label_to_show} ({event_type_obj.title_id})'
+
+        num_incs = 0
+        for incident in event_type_obj.incidents:
+            if incident.reference_texts:
+                num_incs += 1
+
+        one_row = [event_label, num_incs]
+        lists_of_lists.append(one_row)
+
+    df = pd.DataFrame(lists_of_lists, columns=headers)
+
+    return df
+
+
+def get_incidents_df(incident_objs, languages):
+    """
+
+    :param wd_classes.Incident incident_objs:
+    :return:
+    """
+    list_of_lists = []
+    headers = ['Incident',
+               '# of sem:hasPlace',
+               '# of sem:hasTimestamp',
+               '# of sem:hasActor',
+               '# of ReferenceTexts']
+
+    for language in languages:
+        header = f'# of ReferenceTexts in language {language}'
+        headers.append(header)
+
+    sem_rels = ['sem:hasPlace',  'sem:hasTimeStamp', 'sem:hasActor']
+
+    for inc_obj in incident_objs:
+
+        one_row = [
+            inc_obj.full_uri,
+        ]
+
+        for sem_rel in sem_rels:
+            values = inc_obj.extra_info.get(sem_rel, [])
+            one_row.append(len(values))
+
+        one_row.append(len(inc_obj.reference_texts))
+
+        for language in languages:
+            ref_text_objs = inc_obj.reference_texts.get(language, [])
+            one_row.append(len(ref_text_objs))
+
+        list_of_lists.append(one_row)
+
+    df = pd.DataFrame(list_of_lists, columns=headers)
+
+    return df
+
+
+def get_ref_text_df(ref_text_objs, unstructured_folder):
+    """
+
+    :param wd_classes.ReferenceText ref_text_objs:
+    :return:
+    """
+    list_of_lists = []
+    headers = ['ReferenceText',
+               '# of tokens',
+               '# of types',
+               '# of predicates',
+               '# of manual predicates',
+               '# of automatic predicates']
+
+    for ref_text_obj in ref_text_objs:
+
+        naf_path = ref_text_obj.get_naf_path_of_reference_text(unstructured_folder)
+        doc = etree.parse(naf_path)
+
+        num_types = len({term_el.get('lemma') for term_el in doc.xpath('terms/term')})
+        pred_els = doc.findall('srl/predicate')
+
+        manual = 0
+        automatic = 0
+
+        for pred_el in pred_els:
+            status = pred_el.get('status')
+            if status == 'manual':
+                manual += 1
+            elif status == 'automatic':
+                automatic += 1
+
+        one_row = [
+            ref_text_obj.uri,
+            len(doc.findall('text/wf')),
+            num_types,
+            len(pred_els),
+            manual,
+            automatic
+        ]
+        list_of_lists.append(one_row)
+
+    df = pd.DataFrame(list_of_lists, columns=headers)
+    return df
 
 
 class EventTypeCollection:
@@ -945,6 +1059,67 @@ class EventTypeCollection:
             g.serialize(format='turtle', destination=filename)
         else: # else print to the console
             print(g.serialize(format='turtle'))
+
+    def write_stats(self,
+                    event_types,
+                    stats_folder,
+                    unstructured_folder,
+                    languages,
+                    wd_prefix='http://www.wikidata.org/entity/'):
+        """
+
+        :param self:
+        :param stats_folder:
+        :param unstructured_folder:
+        :param languages:
+        :param wd_prefix:
+        :return:
+        """
+        if os.path.exists(stats_folder):
+            shutil.rmtree(stats_folder)
+        os.mkdir(stats_folder)
+
+
+        ev_objs = {}
+        inc_objs = {}
+        ref_text_objs = {}
+        spec_to_main_event_type = self.get_subsumers_of_set_of_event_types(event_types=event_types)
+
+        for spec_type, main_type in spec_to_main_event_type.items():
+            full_uri = f'{wd_prefix}{spec_type}'
+            ev_obj = self.event_type_id_to_event_type_obj.get(full_uri, None)
+
+            if ev_obj is not None:
+                ev_objs[ev_obj.title_id] = ev_obj
+                for incident in ev_obj.incidents:
+                    if incident.reference_texts:
+                        inc_objs[incident.title_id] = incident
+                        for lang, ref_text_obj in incident.reference_texts.items():
+                            ref_text_objs[ref_text_obj.uri] = ref_text_obj
+
+        event_to_inc_df = get_event_type_df(event_type_objs=ev_objs.values())
+        event_to_inc_stats = event_to_inc_df.describe()
+
+        incident_df = get_incidents_df(incident_objs=inc_objs.values(),
+                                       languages=languages)
+        incident_stats = incident_df.describe()
+
+        ref_text_df = get_ref_text_df(ref_text_objs=ref_text_objs.values(),
+                                      unstructured_folder=unstructured_folder)
+        ref_text_stats = ref_text_df.describe()
+
+        dfs_and_basenames_and_method = [
+            (event_to_inc_df, 'event_type_to_num_of_incidents.csv', False),
+            (event_to_inc_stats, 'event_type_to_inc_stats.csv', True),
+            (incident_df, 'incidents.csv', False),
+            (incident_stats, 'incident_stats.csv', True),
+            (ref_text_df, 'reference_texts.csv', False),
+            (ref_text_stats, 'reference_text_stats.csv', True)
+            ]
+
+        for df, basename, index in dfs_and_basenames_and_method:
+            output_path = os.path.join(stats_folder, basename)
+            df.to_csv(output_path, index=index)
 
     def pickle_it(self, output_path):
         with open(output_path, 'wb') as outfile:
