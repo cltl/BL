@@ -1060,6 +1060,75 @@ class EventTypeCollection:
         else: # else print to the console
             print(g.serialize(format='turtle'))
 
+    def write_all_to_one_json(self,
+                              event_types,
+                              json_folder,
+                              unstructured_folder,
+                              typical_frames,
+                              wd_prefix='http://www.wikidata.org/entity/'):
+        """
+        Write one JSON file to disk containing both structured and unstructured data
+
+        :param event_types:
+        :param json_folder:
+        :param languages:
+        :param wd_prefix:
+        :return:
+        """
+        specific_to_main_event_type = self.get_subsumers_of_set_of_event_types(event_types)
+
+        the_json = {}
+
+        for specific_type, main_type in specific_to_main_event_type.items():
+
+            # retrieve EventType of specific event type
+            specific_full_uri = f'{wd_prefix}{specific_type}'
+            spec_ev_obj = self.event_type_id_to_event_type_obj.get(specific_full_uri, None)
+
+            if spec_ev_obj is None:
+                continue
+
+            # retrieve EventType of main event type
+            main_full_uri = f'{wd_prefix}{main_type}'
+            main_ev_obj = self.event_type_id_to_event_type_obj.get(main_full_uri, None)
+
+            if main_ev_obj is None:
+                continue
+
+            for incident in spec_ev_obj.incidents:
+
+                the_typical_frames = typical_frames.get(spec_ev_obj.title_id, [])
+                inc_info = {
+                    'event_type' : specific_full_uri,
+                    'typical_frames' : the_typical_frames,
+                    'meta_data' : incident.extra_info,
+                }
+
+                ref_texts_info = {}
+                for lang, ref_text_obj in incident.reference_texts.items():
+                    if lang not in ref_texts_info:
+                        ref_texts_info[lang] = {}
+
+                    content = ref_text_obj.get_naf_path_of_reference_text(unstructured_folder)
+                    ref_text_info = {
+                        'language' : lang,
+                        'naf_basename' : f'{ref_text_obj.title}.naf',
+                        'raw' : content,
+                        'title' : ref_text_obj.title,
+                        'url' : ref_text_obj.uri
+                    }
+                    ref_texts_info[lang].append(ref_text_info)
+
+                inc_info['reference_texts'] = ref_texts_info
+
+                the_json[incident.title_id] = inc_info
+
+        output_path = os.path.join(json_folder, 'structured_and_unstructured.json')
+        with open(output_path, 'w') as outfile:
+            json.dump(the_json, outfile)
+
+
+
     def write_stats(self,
                     event_types,
                     stats_folder,
