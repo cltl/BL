@@ -16,7 +16,7 @@
     "data_release_frames_folder" : "../data_releases/v1/lexical_resources",
     "data_release_stats_folder" : "../data_releases/v1/statistics",
     "typical_frames_path" : "../data_releases/v1/lexical_resources/dominant_frame_info.json",
-    "lexicon_data" : "../res/Dutch_FrameNet_Lexicon/output/lexicon_data_for_frame_annotation_tool"
+    "lexicon_data" : "/home/postma/BL/res/Dutch_FrameNet_Lexicon/output/lexicon_data_for_frame_annotation_tool"
   },
   "mwep" : {
     "languages": [
@@ -26,6 +26,12 @@
     ],
     "project": "v1",
     "wikipedia_sources" : false
+  },
+  "open-sesame" :
+  {
+    "path_repo" : "/home/postma/run_open-sesame",
+    "tasks" : "target-frame",
+    "naf_output_folder" : "/home/postma/run_open-sesame/output/NAF"
   },
   "event_types" : [
     "Q47566"]
