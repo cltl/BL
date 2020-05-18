@@ -1099,17 +1099,18 @@ class EventTypeCollection:
 
                 the_typical_frames = typical_frames.get(spec_ev_obj.title_id, [])
                 inc_info = {
-                    'event_type' : specific_full_uri,
+                    'event_type' : main_full_uri,
                     'typical_frames' : the_typical_frames,
-                    'meta_data' : incident.extra_info,
+                    'meta_data' : {key : list(value) 
+                                   for key, value in incident.extra_info.items()}
                 }
 
                 ref_texts_info = {}
-                for lang, ref_text_obj in incident.reference_texts.items():
+                for (lang, basename), ref_text_obj in incident.reference_texts.items():
                     if lang not in ref_texts_info:
-                        ref_texts_info[lang] = {}
+                        ref_texts_info[lang] = []
 
-                    content = ref_text_obj.get_naf_path_of_reference_text(unstructured_folder)
+                    content = ref_text_obj.get_content(unstructured_folder)
                     ref_text_info = {
                         'language' : lang,
                         'naf_basename' : f'{ref_text_obj.title}.naf',
@@ -1125,7 +1126,7 @@ class EventTypeCollection:
 
         output_path = os.path.join(json_folder, 'structured_and_unstructured.json')
         with open(output_path, 'w') as outfile:
-            json.dump(the_json, outfile)
+            json.dump(the_json, outfile, indent=2, sort_keys=True)
 
 
 

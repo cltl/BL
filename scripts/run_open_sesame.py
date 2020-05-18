@@ -48,7 +48,7 @@ result = subprocess.check_output(command, shell=True)
 print(result)
 
 naf_out = os.path.join(settings['open-sesame']['path_repo'], 'output', 'NAF')
-wd_en_out = os.path.join(settings['paths']['mwep_wiki_output'], 'en')
+wd_en_out = os.path.join(settings['paths']['data_release_naf_folder'], 'en')
 cp_parts = [
     'find',
     naf_out,
