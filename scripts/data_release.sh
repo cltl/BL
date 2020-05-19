@@ -15,7 +15,8 @@ python integrate_structured_data.py --path_config_json="../config/v1.json" --ver
 # add lexicon data
 python add_lexicon_data.py --path_config_json="../config/v1.json" --verbose="2"
 
-# TODO: add typical frames
+# add typical frames
+python ../res/typical_frames/typical_frames.py --path_config_json="../config/v1.json" --verbose="2"
 
 # add SEM representation
 python convert_to_sem.py --path_config_json="../config/v1.json" --verbose="2"
