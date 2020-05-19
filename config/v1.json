@@ -1,7 +1,7 @@
 {
   "paths" : {
     "wd_representation_base" : "../wd_cache/ev_type_coll.p",
-    "wd_representation_with_mwep" : "../wd_cache/ev_type_coll_updated.p",
+    "wd_representation_with_mwep" : "/home/postma/BL/wd_cache/ev_type_coll_updated.p",
     "bin_folder" : "/home/postma/multilingual-wiki-event-pipeline/bin",
     "mwep_folder" : "/home/postma/multilingual-wiki-event-pipeline",
     "mwep_wiki_output" : "/home/postma/multilingual-wiki-event-pipeline/wiki_output",
@@ -10,12 +10,12 @@
     "mwep_settings" : "../config/mwep_settings.json",
     "data_releases_folder" : "../data_releases",
     "data_release_folder" : "../data_releases/v1",
-    "data_release_naf_folder" : "../data_releases/v1/unstructured",
+    "data_release_naf_folder" : "/home/postma/BL/data_releases/v1/unstructured",
     "data_release_json_folder" : "../data_releases/v1/structured",
     "data_release_rdf_folder" : "../data_releases/v1/rdf",
     "data_release_frames_folder" : "../data_releases/v1/lexical_resources",
     "data_release_stats_folder" : "../data_releases/v1/statistics",
-    "typical_frames_path" : "../data_releases/v1/lexical_resources/dominant_frame_info.json",
+    "typical_frames_path" : "/home/postma/BL/data_releases/v1/lexical_resources/typical_frames.json",
     "lexicon_data" : "/home/postma/BL/res/Dutch_FrameNet_Lexicon/output/lexicon_data_for_frame_annotation_tool"
   },
   "mwep" : {
@@ -34,5 +34,11 @@
     "naf_output_folder" : "/home/postma/run_open-sesame/output/NAF"
   },
   "event_types" : [
-    "Q47566"]
+    "Q47566"],
+  "licenses" : {
+    "readme" : "/home/postma/BL/doc/README.md",
+    "cc0" : "/home/postma/BL/doc/CC0.md",
+    "cc-by-sa" : "/home/postma/BL/doc/CC-BY-SA-3.0.md",
+    "apache" : "/home/postma/BL/doc/Apache_2.0.md"
+  }
 }

@@ -39,11 +39,8 @@ if os.path.exists(settings['paths']['typical_frames_path']):
 else:
     typical_frames = {}
 
-ev_coll_obj.write_structured_and_unstructured(event_types=settings['event_types'],
-                                              json_folder=settings['paths']['data_release_json_folder'],
-                                              unstructured_folder=settings['paths']['data_release_naf_folder'],
-                                              typical_frames=typical_frames)
+ev_coll_obj.write_all_to_one_json(event_types=settings['event_types'],
+                                  json_folder=settings['paths']['data_release_json_folder'],
+                                  unstructured_folder=settings['paths']['data_release_naf_folder'],
+                                  typical_frames=typical_frames)
 
-ev_coll_obj.write_stats(event_types=settings['event_types'],
-                        stats_folder=settings['paths']['data_release_stats_folder'],
-                        languages=settings['mwep']['languages'])

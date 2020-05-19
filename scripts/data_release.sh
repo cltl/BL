@@ -15,6 +15,8 @@ python integrate_structured_data.py --path_config_json="../config/v1.json" --ver
 # add lexicon data
 python add_lexicon_data.py --path_config_json="../config/v1.json" --verbose="2"
 
+# TODO: add typical frames
+
 # add SEM representation
 python convert_to_sem.py --path_config_json="../config/v1.json" --verbose="2"
 
@@ -24,6 +26,7 @@ python write_structured_and_unstructured.py --path_config_json="../config/v1.jso
 # add descriptive statistics
 python write_stats.py --path_config_json="../config/v1.json" --verbose="2"
 
-# TODO: add README, LICENSE
+# add README, LICENSE
+python add_readme_license.py --path_config_json="../config/v1.json" --verbose="2"
 
 
