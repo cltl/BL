@@ -150,8 +150,11 @@ def get_incidents_df(incident_objs, languages):
         one_row.append(len(inc_obj.reference_texts))
 
         for language in languages:
-            ref_text_objs = inc_obj.reference_texts.get(language, [])
-            one_row.append(len(ref_text_objs))
+            num = 0
+            for ref_text_obj in inc_obj.reference_texts.values():
+                if ref_text_obj.language == language:
+                    num += 1
+            one_row.append(num)
 
         list_of_lists.append(one_row)
 
@@ -1252,9 +1255,9 @@ class EventTypeCollection:
                                       unstructured_folder=unstructured_folder)
         ref_text_stats = ref_text_df.describe()
 
-        sent_df = get_sent_df(ref_text_obj=ref_text_objs.values(),
+        sent_df = get_sent_df(ref_text_objs=ref_text_objs.values(),
                               unstructured_folder=unstructured_folder)
-        sent_stats = ref_text_df.describe()
+        sent_stats = sent_df.describe()
 
         dfs_and_basenames_and_method = [
             (event_to_inc_df, 'event_type_to_num_of_incidents.csv', False),
