@@ -28,7 +28,7 @@ print()
 verbose = int(arguments['--verbose'])
 settings = json.load(open(arguments['--path_config_json']))
 
-out_dir = settings['paths']['data_releases_folder']
+out_dir = settings['paths']['data_release_folder']
 
 for license, path in settings['licenses'].items():
     shutil.copy(src=path,
