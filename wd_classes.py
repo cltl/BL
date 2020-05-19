@@ -19,6 +19,80 @@ from wd_utils import from_short_uri_to_full_uri
 from stats_utils import show_top_n, get_sample
 
 
+def gold_silver_bronze(path):
+    """
+
+    :param path:
+    :return:
+    """
+    doc = etree.parse(path)
+
+    wid_to_sentid = {wf_el.get('id') : wf_el.get('sent')
+                     for wf_el in doc.xpath('text/wf')}
+
+    tid_to_sentid = {}
+    for term_el in doc.xpath('terms/term'):
+        tid = term_el.get('id')
+        for target_el in term_el.xpath('span/target'):
+            wid = target_el.get('id')
+            sentid = wid_to_sentid[wid]
+            tid_to_sentid[tid] = sentid
+
+    sentid_to_stati = defaultdict(list)
+
+    for pred_el in doc.xpath('srl/predicate'):
+        target_el = pred_el.find('span/target')
+        tid = target_el.get('id')
+        sentid = tid_to_sentid[tid]
+        status = pred_el.get('status')
+
+        sentid_to_stati[sentid].append(status)
+
+    sent_info = defaultdict(int)
+
+    for sentid, stati in sentid_to_stati.items():
+
+        if set(stati) == {'manual'}:
+            category = 'gold'
+        elif stati.count('manual') >= 1:
+            category = 'silver'
+        else:
+            category = 'bronze'
+
+        sent_info[category] += 1
+
+    return sent_info
+
+def get_sent_df(ref_text_objs, unstructured_folder):
+    """
+
+    :param wd_classes.ReferenceText ref_text_objs:
+    :return:
+    """
+    list_of_lists = []
+    headers = ['ReferenceText URI',
+               '# of gold sentences',
+               '# of silver sentences',
+               '# of bronze sentences',
+               ]
+
+    for ref_text_obj in ref_text_objs:
+
+        naf_path = ref_text_obj.get_naf_path_of_reference_text(unstructured_folder)
+
+        result = gold_silver_bronze(naf_path)
+
+        one_row = [
+            ref_text_obj.uri,
+            result['gold'],
+            result['silver'],
+            result['bronze']
+        ]
+        list_of_lists.append(one_row)
+
+    df = pd.DataFrame(list_of_lists, columns=headers)
+    return df
+
 def get_event_type_df(event_type_objs):
     """
 
@@ -1178,13 +1252,19 @@ class EventTypeCollection:
                                       unstructured_folder=unstructured_folder)
         ref_text_stats = ref_text_df.describe()
 
+        sent_df = get_sent_df(ref_text_obj=ref_text_objs.values(),
+                              unstructured_folder=unstructured_folder)
+        sent_stats = ref_text_df.describe()
+
         dfs_and_basenames_and_method = [
             (event_to_inc_df, 'event_type_to_num_of_incidents.csv', False),
             (event_to_inc_stats, 'event_type_to_inc_stats.csv', True),
             (incident_df, 'incidents.csv', False),
             (incident_stats, 'incident_stats.csv', True),
             (ref_text_df, 'reference_texts.csv', False),
-            (ref_text_stats, 'reference_text_stats.csv', True)
+            (ref_text_stats, 'reference_text_stats.csv', True),
+            (sent_df, 'sentences.csv', False),
+            (sent_stats, 'sentence_stats.csv', True)
             ]
 
         for df, basename, index in dfs_and_basenames_and_method:
@@ -1198,9 +1278,6 @@ class EventTypeCollection:
         if self.verbose:
             print()
             print(f'saved EventTypeCollection to {output_path}')
-
-
-
 
 class EventType():
     """
