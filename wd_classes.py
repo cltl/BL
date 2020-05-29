@@ -102,15 +102,22 @@ def get_event_type_df(event_type_objs):
     headers = ['Event type', '# of incidents']
     lists_of_lists = []
 
-    for event_type_obj in event_type_objs:
-        event_label = f'{event_type_obj.label_to_show} ({event_type_obj.title_id})'
+    label_to_freq = defaultdict(int)
+
+    for spec_obj, main_obj in event_type_objs:
+        label = f'{main_obj.label_to_show} ({main_obj.title_id})'
 
         num_incs = 0
         for incident in event_type_obj.incidents:
             if incident.reference_texts:
                 num_incs += 1
 
-        one_row = [event_label, num_incs]
+        freq = num_incs
+
+        label_to_freq[label] += freq
+
+    for label, freq in label_to_freq.items():
+        one_row = [label, num_incs]
         lists_of_lists.append(one_row)
 
     df = pd.DataFrame(lists_of_lists, columns=headers)
@@ -1240,8 +1247,11 @@ class EventTypeCollection:
             full_uri = f'{wd_prefix}{spec_type}'
             ev_obj = self.event_type_id_to_event_type_obj.get(full_uri, None)
 
+            main_uri = f'{wd_prefix}{main_type}'
+            main_ev_obj = self.event_type_id_to_event_type_obj[main_uri]
+
             if ev_obj is not None:
-                ev_objs[ev_obj.title_id] = ev_obj
+                ev_objs[ev_obj.title_id] = (ev_obj, main_ev_obj)
                 for incident in ev_obj.incidents:
                     if incident.reference_texts:
                         inc_objs[incident.title_id] = incident
