@@ -41,6 +41,5 @@ else:
 
 ev_coll_obj.write_all_to_one_json(event_types=settings['event_types'],
                                   json_folder=settings['paths']['data_release_json_folder'],
-                                  unstructured_folder=settings['paths']['data_release_naf_folder'],
-                                  typical_frames=typical_frames)
+                                  unstructured_folder=settings['paths']['data_release_naf_folder'])
 

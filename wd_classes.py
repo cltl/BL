@@ -1092,6 +1092,9 @@ class EventTypeCollection:
             main_type_uriref = URIRef(main_full_uri)
 
             for incident in spec_ev_obj.incidents:
+                if not incident.reference_texts:
+                    continue 
+
                 event_id = URIRef(incident.full_uri)
 
                 # event labels in all languages
@@ -1143,7 +1146,6 @@ class EventTypeCollection:
                               event_types,
                               json_folder,
                               unstructured_folder,
-                              typical_frames,
                               wd_prefix='http://www.wikidata.org/entity/'):
         """
         Write one JSON file to disk containing both structured and unstructured data
@@ -1175,11 +1177,11 @@ class EventTypeCollection:
                 continue
 
             for incident in spec_ev_obj.incidents:
+                if not incident.reference_texts:
+                    continue
 
-                the_typical_frames = typical_frames.get(spec_ev_obj.title_id, [])
                 inc_info = {
                     'event_type' : main_full_uri,
-                    'typical_frames' : the_typical_frames,
                     'meta_data' : {key : list(value) 
                                    for key, value in incident.extra_info.items()}
                 }
