@@ -38,7 +38,7 @@ parts = [
     f'cd {settings["open-sesame"]["path_repo"]}',
     '&&',
     "bash run_open_sesame.sh",
-    os.path.join(settings['paths']['mwep_wiki_output'], 'en'),
+    os.path.join(settings['paths']['data_release_naf_folder'], 'en'),
     settings['open-sesame']['tasks'],
     frame_to_info
 ]

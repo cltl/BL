@@ -48,7 +48,7 @@ shutil.copy(settings['paths']['event_types_txt'], event_types_txt)
 project = settings['mwep']['project']
 languages = '-'.join(settings['mwep']['languages'])
 wikipedia_sources = settings['mwep']['wikipedia_sources']
-
+path_wd_to_sem = settings['mwep']['mapping_wd_prop_to_sem']
 subcommands = [
     f'cd {mwep_folder}',
     '&&',
@@ -56,11 +56,12 @@ subcommands = [
     f'--config_path="config/mwep_settings.json"',
     f'--project="{project}"',
     f'--path_event_types="config/event_types.txt"',
+    f'--path_mapping_wd_to_sem="{path_wd_to_sem}"',
     f'--languages="{languages}"',
     f'--wikipedia_sources={wikipedia_sources}',
     '--verbose=1'
 ]
 command = ' '.join(subcommands)
 print(command)
-result = subprocess.check_output(command, shell=True)
-print(result)
+#result = subprocess.check_output(command, shell=True)
+#print(result)
