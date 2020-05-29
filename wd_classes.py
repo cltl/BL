@@ -665,10 +665,12 @@ class EventTypeCollection:
                     rt_info = '%s/%s' % (rt.language, rt.title)
                     rts.append(rt_info)
                 key = inc.title_id
-                inc2doc[key] = rts
-                inc2str[key] = str_data
-                proj2inc[project].add(key)
-                type2inc[main_event_type].add(specific_event_type)
+
+                if rts:
+                    inc2doc[key] = rts
+                    inc2str[key] = str_data
+                    proj2inc[project].add(key)
+                    type2inc[main_event_type].add(specific_event_type)
 
         new_t2i = {}
         for k, v in type2inc.items():
