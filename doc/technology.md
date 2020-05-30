@@ -23,7 +23,7 @@ If available, the Wikidata URI of each hyperlink is also added as an external re
 ## Coreferences
 Most incidents contain both structured and unstructured information about the incident.
 There are cases in which a Wikipedia hyperlink in the text is also present in the structured data of the incident.
-In these cases, we add a **coref** element to the **coreferences** layer.
+In these cases, we add a coref element to the coreferences layer.
 
 ## Frame detection
 The FrameNet frame annotations are added using [open-sesame](https://github.com/swabhs/open-sesame).
