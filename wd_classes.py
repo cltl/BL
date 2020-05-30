@@ -108,16 +108,14 @@ def get_event_type_df(event_type_objs):
         label = f'{main_obj.label_to_show} ({main_obj.title_id})'
 
         num_incs = 0
-        for incident in event_type_obj.incidents:
+        for incident in spec_obj.incidents:
             if incident.reference_texts:
                 num_incs += 1
 
-        freq = num_incs
-
-        label_to_freq[label] += freq
+        label_to_freq[label] += num_incs
 
     for label, freq in label_to_freq.items():
-        one_row = [label, num_incs]
+        one_row = [label, freq]
         lists_of_lists.append(one_row)
 
     df = pd.DataFrame(lists_of_lists, columns=headers)
@@ -199,7 +197,7 @@ def get_ref_text_df(ref_text_objs, unstructured_folder):
             status = pred_el.get('status')
             if status == 'manual':
                 manual += 1
-            elif status == 'automatic':
+            elif status == 'system':
                 automatic += 1
 
         one_row = [

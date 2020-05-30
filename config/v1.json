@@ -25,6 +25,7 @@
       "it"
     ],
     "project": "v1",
+    "mapping_wd_prop_to_sem" : "/home/postma/multilingual-wiki-event-pipeline/wdt_fn_mappings/v1.json",
     "wikipedia_sources" : false
   },
   "open-sesame" :
@@ -34,11 +35,38 @@
     "naf_output_folder" : "/home/postma/run_open-sesame/output/NAF"
   },
   "event_types" : [
-    "Q47566"],
+    "Q13219666",
+    "Q1079023",
+    "Q2912397",
+    "Q132241",
+    "Q15966540",
+    "Q1318941",
+    "Q2618461",
+    "Q645883",
+    "Q858439",
+    "Q24050099",
+    "Q18131152",
+    "Q2627975",
+    "Q1478437",
+    "Q15061650",
+    "Q126701",
+    "Q21156425",
+    "Q1445650",
+    "Q11483816",
+    "Q40244",
+    "Q56321344",
+    "Q22231110",
+    "Q22231111",
+    "Q93288",
+    "Q167170",
+    "Q20107484"],
   "licenses" : {
     "readme" : "/home/postma/BL/doc/README.md",
     "cc0" : "/home/postma/BL/doc/CC0.md",
     "cc-by-sa" : "/home/postma/BL/doc/CC-BY-SA-3.0.md",
-    "apache" : "/home/postma/BL/doc/Apache_2.0.md"
+    "apache" : "/home/postma/BL/doc/Apache_2.0.md",
+    "event_types" : "../wd_cache/event_types.txt",
+    "technology": "/home/postma/BL/doc/technology.md",
+    "release_notes" : "/home/postma/BL/doc/release_notes.md"
   }
 }

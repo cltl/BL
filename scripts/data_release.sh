@@ -1,10 +1,10 @@
 export LC_ALL="en_US.UTF-8"
 
-bash represent_wd.sh
+#bash represent_wd.sh
 
-bash create_input_txt_mwep.sh
+#bash create_input_txt_mwep.sh
 
-python call_mwep.py --path_config_json="../config/v1.json" --verbose="1"
+#python call_mwep.py --path_config_json="../config/v1.json" --verbose="1"
 
 #python mwep_integrations.py --path_config_json="../config/v1.json" --verbose="2"
 
@@ -30,6 +30,6 @@ python call_mwep.py --path_config_json="../config/v1.json" --verbose="1"
 #python write_stats.py --path_config_json="../config/v1.json" --verbose="2"
 
 # add README, LICENSE
-#python add_readme_license.py --path_config_json="../config/v1.json" --verbose="2"
+python add_readme_license.py --path_config_json="../config/v1.json" --verbose="2"
 
 
