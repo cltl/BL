@@ -15,21 +15,24 @@ This folder contains the data release as described in the following publication:
 }
 ```
 
+Tip: this document is written in Markdown and makes use of links to local files.
+The most convenient to read this document is to open it using a Markdown viewer.
+
 Have you ever wondered how the same event is described in different languages? Then this dataset might be useful to you.
 From [Wikidata](https://www.wikidata.org/wiki/Wikidata:Main_Page), we've selected 25 event types, e.g., [military operation](https://www.wikidata.org/wiki/Q645883) (see the paper Section 6 for more information).
-In total, we collected 19,979 Wikidata items that belong to these 25 event types (see [event types](event_types.txt).
+In total, we collected 19,979 Wikidata items that belong to these 25 event types (see [event types](./event_types.txt)).
 For each Wikidata item, we attempted to retrieve the first paragraph of the Wikipedia page describing the Wikidata item.
 We included English, Italian, and Dutch texts, which we processed using various NLP systems.
 Also, we represent structured data about each Wikidata item, which facilitates research into framing of events.
 
-The dataset is available in various formats, for which we refer to the [release notes](release_notes.md).
+The dataset is available in various formats, for which we refer to the [release notes](./release_notes.md).
 We've included one JSON file, which contains both the structured and the unstructured data, which can
 be found at **structured/structured_and_unstructured.json**.
 
 ## Release notes
-More detailed information about the data release is described in the [release notes](release_notes.md).
+More detailed information about the data release is described in the [release notes](./release_notes.md).
 
 ## Licenses
-* [Wikidata](https://www.wikidata.org/wiki/Wikidata:Main_Page) is licensed under the [CC0 1.0 Universal]() license.
-* [Wikipedia](https://www.wikipedia.org/) is licensed under the the [CC-BY-SA-3.0](CC-BY-SA-3.0.md) license.
-* all other content in this data release is licensed under the [Apache 2.0](Apache_2.0.md) license.
+* [Wikidata](https://www.wikidata.org/wiki/Wikidata:Main_Page) is licensed under the [CC0 1.0 Universal](./CC0.md) license.
+* [Wikipedia](https://www.wikipedia.org/) is licensed under the the [CC-BY-SA-3.0](./CC-BY-SA-3.0.md) license.
+* all other content in this data release is licensed under the [Apache 2.0](./Apache_2.0.md) license.
