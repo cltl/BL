@@ -14,9 +14,9 @@ from rdflib import URIRef, Literal, XSD
 from rdflib.namespace import Namespace
 from rdflib.namespace import RDF, RDFS
 
-from graph_utils import get_leaf_nodes
-from wd_utils import from_short_uri_to_full_uri
-from stats_utils import show_top_n, get_sample
+from .graph_utils import get_leaf_nodes
+from .wd_utils import from_short_uri_to_full_uri
+from .stats_utils import show_top_n, get_sample
 
 
 def gold_silver_bronze(path):
