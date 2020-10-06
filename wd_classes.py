@@ -4,6 +4,9 @@ import sys
 from collections import defaultdict
 import os
 import shutil
+import random
+import pandas
+import operator
 
 import pandas as pd
 from lxml import etree
@@ -14,10 +17,92 @@ from rdflib import URIRef, Literal, XSD
 from rdflib.namespace import Namespace
 from rdflib.namespace import RDF, RDFS
 
-from .graph_utils import get_leaf_nodes
-from .wd_utils import from_short_uri_to_full_uri
-from .stats_utils import show_top_n, get_sample
+def get_leaf_nodes(g,
+                   verbose=0):
+    leaf_nodes = set()
+    for node in g.nodes():
+        descendants = nx.descendants(g, node)
+        if not descendants:
+            leaf_nodes.add(node)
 
+    if verbose:
+        print()
+        print(f'found {len(leaf_nodes)} leaf node(s)')
+
+    return leaf_nodes
+
+
+def from_short_uri_to_full_uri(short_uri):
+    """
+    replace:
+    - wdt: by http://www.wikidata.org/prop/direct/
+    - wd: by http://www.wikidata.org/entity/
+    """
+    for prefix, full in [('wd:', 'http://www.wikidata.org/entity/'),
+                         ('wdt:', 'http://www.wikidata.org/prop/direct/')]:
+        short_uri = short_uri.replace(prefix, full)
+
+    return short_uri
+
+
+def show_top_n(a_dict,
+               id_to_class_instance=None,
+               label_attr_name=None,
+               n=10,
+               add_rel_freq=False):
+    headers = ['Item', 'Value']
+
+    if add_rel_freq:
+        headers.append('Rel Freq')
+        headers.append('Cum Rel Freq')
+    list_of_lists = []
+
+    index = 0
+    total = sum(a_dict.values())
+    total_rel_freq = 0
+    for key, value in sorted(a_dict.items(),
+                             key=operator.itemgetter(1),
+                             reverse=True):
+        label = key
+        if all([id_to_class_instance,
+                label_attr_name]):
+            class_instance = id_to_class_instance[key]
+            label = getattr(class_instance, label_attr_name)
+
+        one_row = [label, value]
+
+        if add_rel_freq:
+            rel_freq = (value / total) * 100
+            total_rel_freq += rel_freq
+
+            rel_freq = round(rel_freq, 2)
+            rel_freq = f'{rel_freq}%'
+            one_row.append(rel_freq)
+
+            one_row.append(f'{round(total_rel_freq, 2)}%')
+
+        list_of_lists.append(one_row)
+
+        if index == n:
+            break
+        index += 1
+
+    df = pandas.DataFrame(list_of_lists, columns=headers)
+
+    return df.sort_values('Value', ascending=False)
+
+
+def get_sample(iterable, number_of_items):
+
+    if len(iterable) < number_of_items:
+        number_of_items = len(iterable)
+
+    the_sample = random.sample(iterable, number_of_items)
+
+    return the_sample
+
+assert from_short_uri_to_full_uri('wd:Q6534') == 'http://www.wikidata.org/entity/Q6534'
+assert from_short_uri_to_full_uri('wdt:P17') == 'http://www.wikidata.org/prop/direct/P17'
 
 def gold_silver_bronze(path):
     """
